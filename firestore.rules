@@ -246,6 +246,11 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    match /modelos_esteira/{modeloId} {
+      allow read: if isAuthenticated();
+      allow write: if isMaster();
+    }
+
     match /auditoria_rx/{documentId} {
       allow read, create, update: if isMaster() || isAuthenticated();
       allow delete: if isMaster();

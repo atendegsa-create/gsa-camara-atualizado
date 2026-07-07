@@ -1,6 +1,0 @@
-{
-  "name": "GSA Câmara - Mediação & Conciliação",
-  "description": "Plataforma de Conciliação, Mediação e Arbitragem focada em RX do Consignado e alta conversão de acordos.",
-  "requestFramePermissions": ["camera", "microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

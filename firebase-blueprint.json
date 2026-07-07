@@ -90,6 +90,25 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["nome_unidade", "status"]
+    },
+    "ModeloEsteira": {
+      "title": "ModeloEsteira",
+      "description": "Modelos de esteira jurídica para cadastrar casos dinamicamente.",
+      "type": "object",
+      "properties": {
+        "nomeAcao": { "type": "string", "description": "Nome do Tipo de Ação" },
+        "camposObrigatorios": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array de strings com chaves obrigatórias"
+        },
+        "documentosExigidos": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array de strings com chaves de arquivos"
+        }
+      },
+      "required": ["nomeAcao"]
     }
   },
   "firestore": {
@@ -153,6 +172,10 @@
     "/auditoria_rx/{id}": {
       "schema": "object",
       "description": "Auditoria."
+    },
+    "/modelos_esteira/{modeloId}": {
+      "schema": "ModeloEsteira",
+      "description": "Modelos de esteiras e tipos de ações jurídicas."
     }
   }
 }

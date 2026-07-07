@@ -40,6 +40,7 @@ const GsaRecoveryDashboard = lazy(() => import('./components/GsaRecoveryDashboar
 const GsaRecoveryAdminView = lazy(() => import('./components/GsaRecoveryAdminView'));
 const JuridicoProcessoView = lazy(() => import('./components/JuridicoProcessoView'));
 const JuridicoPanelView = lazy(() => import('./components/JuridicoPanelView'));
+const JuridicoProcessManagementView = lazy(() => import('./components/JuridicoProcessManagementView'));
 const LawyerProcessPage = lazy(() => import('./components/LawyerProcessPage'));
 const MediatorDashboard = lazy(() => import('./components/MediatorDashboard'));
 const DebtorNegotiationPortal = lazy(() => import('./components/DebtorNegotiationPortal'));
@@ -772,9 +773,9 @@ function Dashboard() {
               <Route path="jurimetria" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'GestorUnidade', 'MasterAdmin']}><JurimetriaDashboard /></RoleProtectedRoute>} />
               <Route path="b2b-import" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'UNIDADE', 'DIRETOR', 'GestorUnidade', 'MasterAdmin']}><B2BUploadView /></RoleProtectedRoute>} />
               <Route path="unidades-hub" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'MasterAdmin']}><AdminUnitManager /></RoleProtectedRoute>} />
-              <Route path="processos" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'UNIDADE', 'ADVOGADO', 'MEDIADOR', 'Procurador', 'GestorUnidade', 'Mediador', 'CONCILIADOR']}><ProcessManagementView /></RoleProtectedRoute>} />
+              <Route path="processos" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'UNIDADE', 'ADVOGADO', 'MEDIADOR', 'Procurador', 'GestorUnidade', 'Mediador', 'CONCILIADOR']}><JuridicoProcessManagementView /></RoleProtectedRoute>} />
     
-    <Route path="painel-juridico" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'DIRETOR', 'UNIDADE', 'GestorUnidade', 'AdminGeral']}><JuridicoPanelView /></RoleProtectedRoute>} />
+    <Route path="painel-juridico" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'DIRETOR', 'UNIDADE', 'GestorUnidade', 'AdminGeral']}><JuridicoProcessManagementView /></RoleProtectedRoute>} />
               <Route path="processos/novo" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'UNIDADE', 'ADVOGADO', 'MEDIADOR', 'Procurador', 'GestorUnidade', 'CONCILIADOR']}><NovaInclusaoProcesso /></RoleProtectedRoute>} />
               <Route path="processos/:id" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'UNIDADE', 'ADVOGADO', 'MEDIADOR', 'Procurador', 'GestorUnidade', 'Mediador', 'CONCILIADOR']}><ProcessDetailAdminView /></RoleProtectedRoute>} />
               <Route path="documentos" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'AdminGeral', 'DIRETOR', 'UNIDADE', 'ADVOGADO', 'MEDIADOR', 'Procurador', 'GestorUnidade', 'CONCILIADOR']}><DocumentTemplatesView /></RoleProtectedRoute>} />
