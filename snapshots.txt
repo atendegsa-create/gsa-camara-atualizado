@@ -1,0 +1,143 @@
+src/components/BlindBiddingModal.tsx:22:    const unsubscribe = onSnapshot(doc(db, 'processos', processoId), (doc) => {
+src/components/BlindBiddingModal.tsx-23-      if (doc.exists()) setProcesso({ id: doc.id, ...doc.data() } as Process);
+src/components/BlindBiddingModal.tsx-24-    });
+--
+src/components/ConsultantDashboardView.tsx:65:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/ConsultantDashboardView.tsx-66-      const docsData = snapshot.docs.map(doc => {
+src/components/ConsultantDashboardView.tsx-67-        const data = doc.data();
+--
+src/components/ComercialSiteView.tsx:25:    const unsub = onSnapshot(doc(db, 'config', 'tracking'), (doc) => {
+src/components/ComercialSiteView.tsx-26-      if (doc.exists()) {
+src/components/ComercialSiteView.tsx-27-        const data = doc.data();
+--
+src/components/AuditTimeline.tsx:51:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/AuditTimeline.tsx-52-      const logsData = snapshot.docs.map(doc => ({
+src/components/AuditTimeline.tsx-53-        id: doc.id,
+--
+src/components/LeadDashboard.tsx:33:        const unsub = onSnapshot(doc(db, 'leads', savedLeadId), (doc) => {
+src/components/LeadDashboard.tsx-34-          if (doc.exists()) {
+src/components/LeadDashboard.tsx-35-            setLeadData({ id: doc.id, ...doc.data() });
+--
+src/components/LandingPageView.tsx:226:    const unsubscribe = onSnapshot(doc(db, 'consulta_publica', trackingNumber), (snapshot) => {
+src/components/LandingPageView.tsx-227-      if (snapshot.exists()) {
+src/components/LandingPageView.tsx-228-        const data = snapshot.data();
+--
+src/components/AdminUnitManager.tsx:123:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/AdminUnitManager.tsx-124-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+src/components/AdminUnitManager.tsx-125-      setUnits(docs);
+--
+src/components/ProcessDetailAdminView.tsx:70:    const unsubTipos = onSnapshot(doc(db, 'config', 'tipos_acao'), (docSnap) => {
+src/components/ProcessDetailAdminView.tsx-71-      if (docSnap.exists() && docSnap.data().lista) {
+src/components/ProcessDetailAdminView.tsx-72-        setTiposAcaoList(docSnap.data().lista);
+--
+src/components/ProcessDetailAdminView.tsx:91:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/ProcessDetailAdminView.tsx-92-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProcessDocument));
+src/components/ProcessDetailAdminView.tsx-93-      setDocuments(docs);
+--
+src/components/ProcessWhatsAppLog.tsx:24:    const unsubscribe = onSnapshot(q, (snap) => {
+src/components/ProcessWhatsAppLog.tsx-25-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsAppLog));
+src/components/ProcessWhatsAppLog.tsx-26-      setLogs(data);
+--
+src/components/UserManagementView.tsx:58:    const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
+src/components/UserManagementView.tsx-59-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+src/components/UserManagementView.tsx-60-      setUsers(docs);
+--
+src/components/UserManagementView.tsx:68:    const unsubscribeTenants = onSnapshot(qTenants, (snapshot) => {
+src/components/UserManagementView.tsx-69-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+src/components/UserManagementView.tsx-70-      setTenants(docs);
+--
+src/components/UserManagementView.tsx:76:      unsubscribeConflicts = onSnapshot(qConflicts, (snapshot) => {
+src/components/UserManagementView.tsx-77-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+src/components/UserManagementView.tsx-78-        setConflicts(docs);
+--
+src/components/OnlineAnalysisApp.tsx:175:    const unsub = onSnapshot(doc(db, 'config', 'tracking'), (doc) => {
+src/components/OnlineAnalysisApp.tsx-176-      if (doc.exists()) setConfig(doc.data());
+src/components/OnlineAnalysisApp.tsx-177-    }, (error) => {
+--
+src/components/OnlineAnalysisApp.tsx:190:    const unsub = onSnapshot(doc(db, 'leads', leadId), (docSnap) => {
+src/components/OnlineAnalysisApp.tsx-191-      if (docSnap.exists()) {
+src/components/OnlineAnalysisApp.tsx-192-        const data = docSnap.data();
+--
+src/components/PainelNotificacaoAR.tsx:20:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/PainelNotificacaoAR.tsx-21-      setNotificacoes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+src/components/PainelNotificacaoAR.tsx-22-    });
+--
+src/components/ClientProcessView.tsx:84:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/ClientProcessView.tsx-85-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+src/components/ClientProcessView.tsx-86-      setDocuments(docs);
+--
+src/components/FinanceiroView.tsx:33:      return onSnapshot(q, (snapshot) => {
+src/components/FinanceiroView.tsx-34-        setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+src/components/FinanceiroView.tsx-35-        setLoading(false);
+--
+src/components/GsaRecoveryDashboard.tsx:83:    const unsubRec = onSnapshot(query(collection(db!, 'recovery_cobrancas'), where('tenantId', '==', tId)), (snap) => {
+src/components/GsaRecoveryDashboard.tsx-84-      setCobrancas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryDashboard.tsx-85-    });
+--
+src/components/GsaRecoveryDashboard.tsx:88:    const unsubAr = onSnapshot(query(collection(db!, 'ar_online'), where('tenantId', '==', tId)), (snap) => {
+src/components/GsaRecoveryDashboard.tsx-89-      setNotificacoesAr(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryDashboard.tsx-90-    });
+--
+src/components/GsaRecoveryDashboard.tsx:93:    const unsubReq = onSnapshot(query(collection(db!, 'processos'), where('tenantId', '==', tId), where('origem', '==', 'PortalCredor')), (snap) => {
+src/components/GsaRecoveryDashboard.tsx-94-      setRequerimentos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryDashboard.tsx-95-    });
+--
+src/components/GsaRecoveryDashboard.tsx:97:    const unsubAssinaturas = onSnapshot(query(collection(db!, 'recovery_assinaturas'), where('tenantId', '==', tId)), (snap) => {
+src/components/GsaRecoveryDashboard.tsx-98-      setAssinaturas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryDashboard.tsx-99-    });
+--
+src/components/GsaRecoveryDashboard.tsx:101:    const unsubJuridico = onSnapshot(query(collection(db!, 'juridico_processos'), where('tenantId', '==', tId)), (snap) => {
+src/components/GsaRecoveryDashboard.tsx-102-      setJuridicoProcessos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryDashboard.tsx-103-    });
+--
+src/components/AdminCommissionsReportView.tsx:37:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/AdminCommissionsReportView.tsx-38-      const dados = snapshot.docs.map(doc => ({
+src/components/AdminCommissionsReportView.tsx-39-        id: doc.id,
+--
+src/components/ClientDashboardView.tsx:38:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/ClientDashboardView.tsx-39-      const docsData = snapshot.docs.map(doc => ({
+src/components/ClientDashboardView.tsx-40-        id: doc.id,
+--
+src/components/OnlineLeadsAdmin.tsx:42:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/OnlineLeadsAdmin.tsx-43-      const leadsData = snapshot.docs.map(doc => ({
+src/components/OnlineLeadsAdmin.tsx-44-        id: doc.id,
+--
+src/components/GsaRecoveryAdminView.tsx:102:    const unsubCredores = onSnapshot(qCredores, (snapshot) => {
+src/components/GsaRecoveryAdminView.tsx-103-      setCredores(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryAdminView.tsx-104-    });
+--
+src/components/GsaRecoveryAdminView.tsx:111:    const unsubAssinaturas = onSnapshot(qAssinaturas, (snapshot) => {
+src/components/GsaRecoveryAdminView.tsx-112-      setAssinaturasGlobais(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+src/components/GsaRecoveryAdminView.tsx-113-    });
+--
+src/components/AdminLeadsView.tsx:42:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/AdminLeadsView.tsx-43-      const leadsData: Lead[] = [];
+src/components/AdminLeadsView.tsx-44-      snapshot.forEach((doc) => {
+--
+src/components/ProcessManagementView.tsx:81:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/ProcessManagementView.tsx-82-      const dados = snapshot.docs.map(doc => ({
+src/components/ProcessManagementView.tsx-83-        id: doc.id,
+--
+src/components/TenantUsersView.tsx:24:    const unsubscribe = onSnapshot(q, (snap) => {
+src/components/TenantUsersView.tsx-25-      setEquipa(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+src/components/TenantUsersView.tsx-26-      setLoading(false);
+--
+src/components/JuridicoProcessoView.tsx:16:    const unsub = onSnapshot(doc(db, 'juridico_processos', processoId), (docSnap) => {
+src/components/JuridicoProcessoView.tsx-17-      if (docSnap.exists()) {
+src/components/JuridicoProcessoView.tsx-18-        setProcesso({ id: docSnap.id, ...docSnap.data() });
+--
+src/components/JurimetriaDashboard.tsx:41:    const unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
+src/components/JurimetriaDashboard.tsx-42-      let total = 0;
+src/components/JurimetriaDashboard.tsx-43-      let convertidos = 0;
+--
+src/components/JurimetriaDashboard.tsx:83:    const unsubscribeProcessos = onSnapshot(qProcessos, (snapshot) => {
+src/components/JurimetriaDashboard.tsx-84-      let recTap = 0;
+src/components/JurimetriaDashboard.tsx-85-      snapshot.forEach(doc => {
+--
+src/components/MediatorDashboard.tsx:26:    const unsubscribe = onSnapshot(q, (snapshot) => {
+src/components/MediatorDashboard.tsx-27-      setAudiencias(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+src/components/MediatorDashboard.tsx-28-    });
+--
+src/hooks/useTenantResolver.ts:54:          unsubscribe = onSnapshot(doc(db, 'tenants', tenantId), (docSnap) => {
+src/hooks/useTenantResolver.ts-55-            if (docSnap.exists()) {
+src/hooks/useTenantResolver.ts-56-              const tenantData = { id: docSnap.id, ...docSnap.data() } as Tenant;

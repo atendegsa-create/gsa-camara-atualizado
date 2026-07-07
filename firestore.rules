@@ -1,0 +1,290 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // FUNÇÕES AUXILIARES (HELPERS)
+    // =========================================================================
+
+    // Verifica se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Busca o documento do usuário logado na coleção 'usuarios'
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    // Verifica se o usuário é MASTER (acesso irrestrito)
+    function isMaster() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'atende.gsa@gmail.com' ||
+        (userExists() && getUserData().get('tipo_usuario', '') in ['MASTER', 'ADMIN', 'MasterAdmin', 'AdminGeral', 'Admin', 'Administrador'])
+      );
+    }
+
+    // Verifica se o usuário é ANALISTA
+    function isAnalista() {
+      return isAuthenticated() && userExists() && getUserData().get('tipo_usuario', '') in ['ANALISTA', 'Analista', 'ANALISTA_QUALIDADE'];
+    }
+
+    // Retorna o ID da unidade (tenantId) vinculada ao usuário
+    function getUserTenantId() {
+      return userExists() ? getUserData().get('tenantId', null) : null;
+    }
+
+    // Verifica se o documento pertence à mesma unidade do usuário e se o user é da equipe
+    function isTenantTeam(docTenantId) {
+      let claimTenant = request.auth.token.get('tenantId', null);
+      return (claimTenant != null && claimTenant == docTenantId) ||
+             (isAuthenticated() && userExists() && 
+              getUserData().get('tenantId', null) == docTenantId &&
+              getUserData().get('tipo_usuario', '') in ['UNIDADE', 'DIRETOR', 'GestorUnidade', 'Mediador', 'MEDIADOR', 'CONCILIADOR', 'Procurador', 'ADVOGADO']);
+    }
+
+    // Verifica se é o dono do documento ou um Cliente acessando seu processo
+    function isOwner(userId) {
+      return isAuthenticated() && userId != null && request.auth.uid == userId;
+    }
+
+    function isClientOfProcess() {
+       return isAuthenticated() && resource.data.get('cliente_id', null) == request.auth.uid;
+    }
+
+    // =========================================================================
+    // REGRAS POR COLEÇÃO
+    // =========================================================================
+
+    // Configurações do sistema
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+    
+    // Configurações específicas (ex: recovery_)
+    match /configuracoes/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isMaster();
+    }
+
+    // 1. TENANTS (Unidades)
+    match /tenants/{tenantId} {
+      allow read: if true; // Leitura pública para carregar branding
+      allow write: if isMaster();
+    }
+
+    // 2. USUÁRIOS
+    match /usuarios/{userId} {
+      allow get: if isAuthenticated() && (
+        isOwner(userId) || 
+        (!isOwner(userId) && (isMaster() || (resource != null && isTenantTeam(resource.data.get('tenantId', null)))))
+      );
+      allow list: if isAuthenticated() && (
+        isMaster() ||
+        (resource != null && resource.data.get('email', '') == request.auth.token.email) ||
+        (resource != null && isTenantTeam(resource.data.get('tenantId', null))) ||
+        (resource != null && resource.data.get('tipo_usuario', '') == 'ADVOGADO')
+      );
+      allow create: if isAuthenticated() && (
+        isOwner(userId) || 
+        (!isOwner(userId) && (isMaster() || isTenantTeam(request.resource.data.get('tenantId', null))))
+      );
+      allow update: if isAuthenticated() && (
+        isOwner(userId) || 
+        (!isOwner(userId) && (isMaster() || (resource != null && isTenantTeam(resource.data.get('tenantId', null)))))
+      );
+    }
+
+    // 3. PROCESSOS
+    match /processos/{processId} {
+      allow list: if isMaster() || isAnalista() ||
+        (isAuthenticated() && (
+        isTenantTeam(resource.data.get('tenantId', null)) || 
+        resource.data.get('cliente_id', null) == request.auth.uid
+      ));
+      
+      // PERMITE LER UM DOCUMENTO ESPECÍFICO
+      allow get: if isMaster() || isAnalista() || 
+         (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null))) ||
+         (isAuthenticated() && resource.data.get('cliente_id', null) == request.auth.uid);
+
+      allow create: if isMaster() || isAnalista() ||
+        (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null))) ||
+        (isAuthenticated() && request.resource.data.get('tipo_acao', '').matches('^Auditoria RX.*$'));
+      
+      allow update: if isMaster() || isAnalista() ||
+        (
+        isAuthenticated() && 
+        isTenantTeam(resource.data.get('tenantId', null)) && 
+        isTenantTeam(request.resource.data.get('tenantId', null))
+      ) ||
+        (
+        // CLIENTE PODE ATUALIZAR APENAS AS PROPOSTAS (Blind Bidding), ASSINATURAS e CONCILIAÇÃO
+        isAuthenticated() && resource.data.get('cliente_id', null) == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasAny(['blind_bidding', 'solicitacoes', 'status_assinatura', 'status_concordancia'])
+      ) ||
+        (
+        // Sistema pode usar tokens anônimos para clientes sem login auth
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['blind_bidding', 'status_ar', 'fase_data'])
+      );
+      
+      allow delete: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      
+      // Subcoleções explícitas (garante prioridade contra path=**)
+      match /logs/{logId} {
+         allow read, write: if isAuthenticated();
+      }
+      match /documentos/{docId} {
+         allow read, write: if isAuthenticated();
+      }
+      match /whatsapp_logs/{logId} {
+         allow read, write: if isAuthenticated();
+      }
+    }
+
+    // 4. LEADS
+    match /leads/{leadId} {
+      allow get: if isMaster() || isAnalista() || (isAuthenticated() && (
+        (resource.data.get('tenantId', null) != null && isTenantTeam(resource.data.get('tenantId', null))) || 
+        resource.data.get('consultorId', null) == request.auth.uid || 
+        resource.data.get('owner_uid', null) == request.auth.uid
+      ));
+      allow list: if isMaster() || isAnalista() || (isAuthenticated() && (
+        (resource.data.get('tenantId', null) != null && isTenantTeam(resource.data.get('tenantId', null))) || 
+        (resource.data.get('tenantSlug', null) != null && isTenantTeam(resource.data.get('tenantSlug', null))) || 
+        resource.data.get('consultorId', null) == request.auth.uid || 
+        resource.data.get('owner_uid', null) == request.auth.uid
+      ));
+      allow create: if true; // Public lead capture
+      allow update: if isMaster() || isAnalista() || (isAuthenticated() && (
+        (resource.data.get('tenantId', null) != null && isTenantTeam(resource.data.get('tenantId', null))) || 
+        resource.data.get('consultorId', null) == request.auth.uid || 
+        resource.data.get('owner_uid', null) == request.auth.uid
+      )) || true; // Updates from quizzes / unauthenticated capture routines - keeping true but restricted in ui
+      allow delete: if isMaster();
+    }
+
+    match /leads_vitrine/{leadId} {
+      allow get: if true;
+      allow list: if isMaster() || isAnalista() || (isAuthenticated() && (
+        (resource.data.get('tenantId', null) != null && isTenantTeam(resource.data.get('tenantId', null))) || 
+        resource.data.get('owner_uid', null) == request.auth.uid ||
+        resource.data.get('consultorId', null) == request.auth.uid ||
+        true // Allow all authenticated to read for now, filtering done in UI, but ideally we should restrict
+      ));
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isMaster();
+    }
+
+    // 5. CLIENTES
+    match /clientes/{clientId} {
+      allow read: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null)));
+      allow create: if isMaster() || (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null)));
+      allow update: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null)));
+      allow delete: if isMaster();
+    }
+
+    // 6. TRANSAÇÕES E FINANCEIRO
+    match /transacoes/{txId} {
+      allow read: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null)));
+      allow create: if isMaster() || isAuthenticated();
+      allow update: if isMaster();
+      allow delete: if isMaster();
+    }
+    
+    match /financeiro_transacoes/{txId} {
+      allow read: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null))) || (isAuthenticated() && resource != null && resource.data.get('cliente_id', null) == request.auth.uid);
+      allow create: if isMaster() || isAuthenticated();
+      allow update: if isMaster();
+      allow delete: if isMaster();
+    }
+
+    match /tenants/{tenantId}/extrato_credenciado/{extratoId} {
+      allow read: if isMaster() || (isAuthenticated() && isTenantTeam(tenantId));
+      allow write: if isMaster();
+    }
+
+    // 7. AR ONLINE E RECOVERY (Acesso público via token/URL)
+    match /ar_online/{arId} {
+      allow get: if true; // Permite ler a AR com o link direto
+      allow list: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow update: if true; // Permite assinar
+      allow create, delete: if isMaster() || isAuthenticated();
+    }
+
+    match /recovery_cobrancas/{cobrancaId} {
+      allow get: if true; // Permite ler a cobrança com o link direto
+      allow list: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow update: if true; // Permite negociar
+      allow create, delete: if isMaster() || isAuthenticated();
+    }
+
+    match /recovery_credores/{documentId} {
+      allow read: if isMaster() || isAuthenticated();
+      allow create: if isMaster() || (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null)));
+      allow update: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow delete: if isMaster();
+    }
+
+    match /recovery_assinaturas/{documentId} {
+      allow read: if isMaster() || isAuthenticated();
+      allow create: if isMaster() || (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null)));
+      allow update: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow delete: if isMaster();
+    }
+
+    match /juridico_processos/{documentId} {
+      allow read: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow create: if isMaster() || (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null)));
+      allow update: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow delete: if isMaster();
+    }
+
+    match /auditoria_rx/{documentId} {
+      allow read, create, update: if isMaster() || isAuthenticated();
+      allow delete: if isMaster();
+    }
+
+    match /consulta_publica/{consultaId} {
+      allow get: if true;
+      allow list: if isMaster() || (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null)));
+      allow create: if true;
+      allow update: if true; // to allow user tracking
+      allow delete: if isMaster();
+    }
+
+    match /system_notifications/{notificationId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Regra Genérica para subcoleções de documentos
+    match /{path=**}/documentos/{documentId} {
+      allow read: if isMaster() ||
+      (isAuthenticated() && isTenantTeam(resource.data.get('tenantId', null))) ||
+      // Exige que o utilizador saiba o ID exato do processo/cliente para ler o documento
+      (resource.data.get('publico', false) == true); 
+      
+      allow write: if isMaster() ||
+      (isAuthenticated() && isTenantTeam(request.resource.data.get('tenantId', null)));
+    }
+
+    match /{path=**}/logs/{logId} {
+       allow read, write: if isMaster() || isAuthenticated();
+    }
+
+    match /{path=**}/whatsapp_logs/{logId} {
+       allow read, write: if isMaster() || isAuthenticated();
+    }
+
+    // Fallback Restrito
+    match /{document=**} {
+      allow read, write: if isMaster();
+    }
+  }
+}
