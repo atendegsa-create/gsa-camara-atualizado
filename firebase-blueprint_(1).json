@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Gerencia quem acessa o sistema.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "UID do Firebase Auth" },
+        "nome_completo": { "type": "string", "description": "Nome completo" },
+        "documento": { "type": "string", "description": "CPF ou CNPJ" },
+        "tipo_usuario": { 
+          "type": "string", 
+          "enum": ["ADMIN", "CONCILIADOR", "ADVOGADO", "CLIENTE"],
+          "description": "Papel do usuário"
+        },
+        "email": { "type": "string", "format": "email" },
+        "whatsapp": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDENTE", "APROVADO", "REJEITADO"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nome_completo", "tipo_usuario", "email"]
+    },
+    "Process": {
+      "title": "Process",
+      "description": "Gestão de processos.",
+      "type": "object",
+      "properties": {
+        "nup": { "type": "string" },
+        "status": { "type": "string" },
+        "valor_causa": { "type": "number" },
+        "cliente_id": { "type": "string" },
+        "cliente_nome": { "type": "string" },
+        "cliente_email": { "type": "string" },
+        "status_ar": { "type": "string" },
+        "data_abertura": { "type": "string", "format": "date-time" },
+        "ultima_atualizacao": { "type": "string", "format": "date-time" },
+        "historico_eventos": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["status", "data_abertura"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Interessados.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "whatsapp": { "type": "string" },
+        "cpf": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "type": "object",
+      "properties": {
+        "processo_id": { "type": "string" },
+        "valor": { "type": "number" },
+        "tipo": { "type": "string" },
+        "criado_em": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Unidades credenciadas da REDE GSA.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome_unidade": { "type": "string" },
+        "documento_cnpj": { "type": "string" },
+        "dominio_personalizado": { "type": "string" },
+        "status": { "type": "string", "enum": ["ATIVO", "SUSPENSO", "INATIVO"] },
+        "white_label": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "secondaryColor": { "type": "string" },
+            "emailContato": { "type": "string" },
+            "whatsappContato": { "type": "string" },
+            "nomeAssinatura": { "type": "string" },
+            "logoUrl": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nome_unidade", "status"]
+    }
+  },
+  "firestore": {
+    "/usuarios/{userId}": {
+      "schema": "User",
+      "description": "Coleção de usuários."
+    },
+    "/tenants/{tenantId}": {
+      "schema": "Tenant",
+      "description": "Coleção de unidades credenciadas."
+    },
+    "/processos/{processId}": {
+      "schema": "Process",
+      "description": "Coleção de processos."
+    },
+    "/processos/{processId}/logs/{logId}": {
+      "schema": {
+        "title": "ProcessLog",
+        "type": "object",
+        "properties": {
+          "tipo": { "type": "string", "enum": ["STATUS", "PROVA", "IA", "AR", "SISTEMA", "MENSAGEM"] },
+          "status": { "type": "string" },
+          "mensagem": { "type": "string" },
+          "autor_id": { "type": "string" },
+          "autor_nome": { "type": "string" },
+          "is_ia": { "type": "boolean" },
+          "metadata": { "type": "object" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "Log de auditoria do processo."
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Coleção de leads."
+    },
+    "/consulta_publica/{id}": {
+      "schema": {
+        "title": "PublicTracking",
+        "type": "object",
+        "properties": {
+          "nup": { "type": "string" },
+          "status": { "type": "string" },
+          "cliente_documento": { "type": "string" }
+        }
+      },
+      "description": "Dados públicos."
+    },
+    "/financeiro_transacoes/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Finanças."
+    },
+    "/config/{configId}": {
+      "schema": "object",
+      "description": "Configurações."
+    },
+    "/notificacoes_enviadas/{id}": {
+      "schema": "object",
+      "description": "Logs de notificações."
+    },
+    "/auditoria_rx/{id}": {
+      "schema": "object",
+      "description": "Auditoria."
+    }
+  }
+}

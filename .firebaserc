@@ -1,0 +1,16 @@
+{
+  "projects": {},
+  "targets": {
+    "gen-lang-client-0694461947": {
+      "hosting": {
+        "app": [
+          "app-72hrs-info"
+        ],
+        "gsacamara": [
+          "gsacamara-72hrs-info"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

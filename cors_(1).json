@@ -1,0 +1,14 @@
+[
+  {
+    "origin": [
+      "https://seusdireitosbr.com.br",
+      "https://app.seusdireitosbr.com.br",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://ais-dev-g3vxy7sdqlp52zdnk4ngxx-133193032849.us-west1.run.app",
+      "https://ais-pre-g3vxy7sdqlp52zdnk4ngxx-133193032849.us-west1.run.app"
+    ],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]
