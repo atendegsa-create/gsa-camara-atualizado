@@ -15,7 +15,11 @@ import {
   ArrowLeft,
   Scale,
   Clock,
-  MessageCircle
+  MessageCircle,
+  Eye,
+  X,
+  Download,
+  FileText
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Markdown from 'react-markdown';
@@ -25,6 +29,14 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../AuthContext';
 
 type Step = 'intro' | 'identity' | 'quiz' | 'upload' | 'summary' | 'extra_info' | 'full_confirmation' | 'analysis' | 'payment' | 'waiting_payment' | 'result' | 'done';
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
 export default function OnlineAnalysisApp() {
   const { tenant } = useAuth();
@@ -53,6 +65,7 @@ export default function OnlineAnalysisApp() {
   const [config, setConfig] = useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [filesBase64, setFilesBase64] = useState<string[]>([]);
+  const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
   const [customMessage, setCustomMessage] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [leadId, setLeadId] = useState("");
@@ -67,7 +80,8 @@ export default function OnlineAnalysisApp() {
     descricao: '',
     valor: '',
     urgencia: '',
-    prova: ''
+    prova: '',
+    categoria: ''
   });
 
   const DEFAULT_QUIZ = [
@@ -509,37 +523,88 @@ export default function OnlineAnalysisApp() {
     }
   };
 
+  const stepVariants = {
+    initial: { opacity: 0, x: 24, scale: 0.985 },
+    animate: { 
+      opacity: 1, 
+      x: 0, 
+      scale: 1,
+      transition: { 
+        duration: 0.45, 
+        ease: [0.16, 1, 0.3, 1] as any,
+        staggerChildren: 0.08,
+        delayChildren: 0.05
+      } 
+    },
+    exit: { 
+      opacity: 0, 
+      x: -24, 
+      scale: 0.985,
+      transition: { 
+        duration: 0.3, 
+        ease: [0.16, 1, 0.3, 1] as any
+      } 
+    }
+  };
+
+  const itemVariants = {
+    initial: { opacity: 0, y: 16 },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as any }
+    },
+    exit: {
+      opacity: 0,
+      y: -10,
+      transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] as any }
+    }
+  };
+
   const renderIntro = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-8">
-      <div className="w-20 h-20 bg-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-red-900/20">
-        <BrainCircuit size={40} className="text-white" />
-      </div>
-      <div>
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="text-center space-y-8"
+    >
+      <motion.div variants={itemVariants} className="w-20 h-20 bg-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-red-900/20">
+        <BrainCircuit size={40} className="text-white animate-pulse" />
+      </motion.div>
+      <motion.div variants={itemVariants}>
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-4">Análise de Viabilidade Online</h1>
-        <p className="text-gray-500 max-w-md mx-auto">
+        <p className="text-gray-500 max-w-md mx-auto text-sm">
           Nossa Inteligência Artificial irá analisar seu caso em tempo real para determinar as chances de sucesso via mediação extrajudicial.
         </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+      </motion.div>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
         {[
           { icon: ShieldCheck, t: "Sigilo Total", d: "Dados 100% protegidos" },
           { icon: TrendingUp, t: "Estratégia", d: "Plano de ação imediato" },
           { icon: CheckCircle2, t: "Validade", d: "Base legal garantida" },
         ].map((item, i) => (
-          <div key={i} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <item.icon className="text-red-600 mb-2" size={20} />
+          <motion.div 
+            key={i} 
+            whileHover={{ y: -4, scale: 1.02, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
+            className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm transition-colors duration-200"
+          >
+            <item.icon className="text-red-600 mb-2 animate-pulse" size={20} />
             <h4 className="font-bold text-xs text-gray-900 uppercase tracking-wider">{item.t}</h4>
             <p className="text-[10px] text-gray-400">{item.d}</p>
-          </div>
+          </motion.div>
         ))}
-      </div>
-      <button 
+      </motion.div>
+      <motion.button 
+        variants={itemVariants}
+        whileHover={{ scale: 1.015, backgroundColor: "#680d16" }}
+        whileTap={{ scale: 0.985 }}
         onClick={() => changeStep('identity')}
-        className="w-full bg-[#7a0f1a] text-white py-5 rounded-2xl font-bold shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+        className="w-full bg-[#7a0f1a] text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer"
       >
         Iniciar Diagnóstico Gratuito
         <ArrowRight size={20} />
-      </button>
+      </motion.button>
     </motion.div>
   );
 
@@ -587,21 +652,27 @@ export default function OnlineAnalysisApp() {
   };
 
   const renderIdentity = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-      <div className="flex items-center gap-3 mb-8">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-6"
+    >
+      <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
         <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
           <User size={20} className="text-gray-500" />
         </div>
         <h2 className="text-xl font-serif font-bold text-gray-900">Seus Dados de Contato</h2>
-      </div>
-      <div className="space-y-4">
+      </motion.div>
+      <motion.div variants={itemVariants} className="space-y-4">
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase ml-2">Nome Completo</label>
           <input 
             type="text" 
             value={formData.nome}
             onChange={e => setFormData({...formData, nome: e.target.value})}
-            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none"
+            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all"
             placeholder="Como podemos te chamar?"
           />
         </div>
@@ -611,7 +682,7 @@ export default function OnlineAnalysisApp() {
             type="text" 
             value={formData.cpf}
             onChange={e => setFormData({...formData, cpf: e.target.value})}
-            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none"
+            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all"
             placeholder="000.000.000-00"
           />
         </div>
@@ -622,7 +693,7 @@ export default function OnlineAnalysisApp() {
               type="email" 
               value={formData.email}
               onChange={e => setFormData({...formData, email: e.target.value})}
-              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none"
+              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all"
               placeholder="seu@email.com"
             />
           </div>
@@ -632,20 +703,39 @@ export default function OnlineAnalysisApp() {
               type="tel" 
               value={formData.whatsapp}
               onChange={e => setFormData({...formData, whatsapp: e.target.value})}
-              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none"
+              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all"
               placeholder="(00) 00000-0000"
             />
           </div>
         </div>
-      </div>
-      <button 
-        disabled={!formData.nome || !formData.cpf || !formData.email || !formData.whatsapp}
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-2">Categoria do Caso</label>
+          <select 
+            value={formData.categoria || ''}
+            onChange={e => setFormData({...formData, categoria: e.target.value})}
+            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all text-gray-700 font-medium"
+          >
+            <option value="">Selecione uma categoria...</option>
+            <option value="Cível">Cível (Consumidor, Danos Morais, Cobranças, Contratos)</option>
+            <option value="Trabalhista">Trabalhista (Vínculo, Rescisão, Horas Extras, Acidentes de Trabalho)</option>
+            <option value="Família">Família e Sucessões (Divórcio, Pensão Alimentícia, Guarda, Inventário)</option>
+            <option value="Previdenciário">Previdenciário / INSS (Aposentadoria, Auxílios, Benefícios)</option>
+            <option value="Empresarial">Empresarial (Conflitos de Sócios, Propriedade Intelectual, Marcas)</option>
+            <option value="Outro">Outro Assunto / Categoria Geral</option>
+          </select>
+        </div>
+      </motion.div>
+      <motion.button 
+        variants={itemVariants}
+        whileHover={formData.nome && formData.cpf && formData.email && formData.whatsapp && formData.categoria ? { scale: 1.015, backgroundColor: "#680d16" } : {}}
+        whileTap={formData.nome && formData.cpf && formData.email && formData.whatsapp && formData.categoria ? { scale: 0.985 } : {}}
+        disabled={!formData.nome || !formData.cpf || !formData.email || !formData.whatsapp || !formData.categoria}
         onClick={handleContinueToQuiz}
-        className="w-full bg-[#7a0f1a] disabled:opacity-50 text-white py-5 rounded-2xl font-bold shadow-xl mt-8 flex items-center justify-center gap-2"
+        className="w-full bg-[#7a0f1a] disabled:opacity-50 text-white py-5 rounded-2xl font-bold shadow-xl mt-8 flex items-center justify-center gap-2 cursor-pointer transition-all"
       >
         Continuar para o Quiz
         <ArrowRight size={20} />
-      </button>
+      </motion.button>
     </motion.div>
   );
 
@@ -654,28 +744,36 @@ export default function OnlineAnalysisApp() {
     const current = quizQuestions[quizStep];
 
     return (
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+      <motion.div 
+        variants={stepVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className="space-y-6"
+      >
         {/* Progress Bar */}
-        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+        <motion.div variants={itemVariants} className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${((quizStep === 99 ? 3 : quizStep) / total) * 100}%` }}
             className="h-full bg-red-600"
           />
-        </div>
+        </motion.div>
 
         {/* Real-time Score */}
-        <div className="bg-gray-50 p-4 rounded-3xl text-center border border-gray-100">
+        <motion.div variants={itemVariants} className="bg-gray-50 p-4 rounded-3xl text-center border border-gray-100">
            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Viabilidade Estimada</p>
            <h2 className="text-3xl font-black text-red-600">{quizScore}%</h2>
-        </div>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {quizStep === 99 ? (
              <motion.div 
               key="conditional"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="space-y-4"
             >
               <h2 className="text-xl font-serif font-bold text-gray-900 text-center mb-6">O que aconteceu quando tentou resolver?</h2>
@@ -685,42 +783,50 @@ export default function OnlineAnalysisApp() {
                 className="w-full p-6 bg-gray-50 border border-gray-100 rounded-[32px] focus:ring-2 focus:ring-red-600 outline-none h-40 text-gray-700"
                 placeholder="Conte-nos brevemente o desfecho..."
               />
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
                 onClick={() => handleQuizAnswer('tentou_resolver_detalhe', { value: tentouResolverDetalhe, points: 0 })}
-                className="w-full bg-black text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3"
+                className="w-full bg-black text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer"
               >
                 Próxima Pergunta
                 <ArrowRight size={20} />
-              </button>
-            </motion.div>
+              </motion.button>
+             </motion.div>
           ) : (
-            <motion.div 
+             <motion.div 
               key={quizStep}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="space-y-4"
             >
               <h2 className="text-xl md:text-2xl font-serif font-bold text-gray-900 text-center mb-6">{current.pergunta}</h2>
               <div className="grid grid-cols-1 gap-3">
                 {current.opcoes.map((op, i) => (
-                  <button
+                  <motion.button
                     key={i}
+                    whileHover={{ scale: 1.015, y: -2 }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={() => handleQuizAnswer(current.key, op)}
-                    className="p-5 text-left bg-white border border-gray-100 rounded-2xl hover:border-red-600 hover:shadow-lg transition-all group relative overflow-hidden"
+                    className="p-5 text-left bg-white border border-gray-100 rounded-2xl hover:border-red-600 hover:shadow-lg transition-all group relative overflow-hidden cursor-pointer"
                   >
                     <div className="flex justify-between items-center relative z-10">
                       <span className="font-bold text-gray-700 group-hover:text-red-700">{op.label}</span>
                       <ArrowRight size={18} className="text-gray-200 group-hover:text-red-600 group-hover:translate-x-1 transition-all" />
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </motion.div>
+             </motion.div>
           )}
         </AnimatePresence>
 
-        <button 
+        <motion.button 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => {
             if (quizStep === 99) {
               setQuizStep(2); // Voltar para "Já tentou resolver?"
@@ -730,10 +836,10 @@ export default function OnlineAnalysisApp() {
               changeStep('identity');
             }
           }} 
-          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2"
+          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowLeft size={14} /> Voltar
-        </button>
+        </motion.button>
       </motion.div>
     );
   };
@@ -769,186 +875,276 @@ export default function OnlineAnalysisApp() {
   };
 
   const renderUpload = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="space-y-4">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-6"
+    >
+      <motion.div variants={itemVariants} className="space-y-4">
         <h2 className="text-xl font-serif font-bold text-gray-900 text-center">Descreva seu caso e envie anexos (opcional)</h2>
         <textarea 
           value={customMessage}
           onChange={e => setCustomMessage(e.target.value)}
-          className="w-full p-6 bg-gray-50 border border-gray-100 rounded-[32px] focus:ring-2 focus:ring-red-600 outline-none h-40 text-gray-700"
+          className="w-full p-6 bg-gray-50 border border-gray-100 rounded-[32px] focus:ring-2 focus:ring-red-600 outline-none h-40 text-gray-700 focus:bg-white transition-all"
           placeholder="Mensagem livre sobre o ocorrido (o que causou a situação, o que deseja resolver, etc)..."
         />
-      </div>
+      </motion.div>
 
-      <div className="space-y-4">
+      <motion.div variants={itemVariants} className="space-y-4">
         <h2 className="text-xl font-serif font-bold text-gray-900 text-center">Enviar Anexos (PDFs, Imagens)</h2>
         <input 
           type="file" 
           multiple
           accept="image/*,.pdf"
           onChange={(e) => handleFileUpload(e.target.files)}
-          className="w-full p-4 bg-gray-50 border border-dashed border-gray-200 rounded-[24px] focus:ring-2 focus:ring-red-600 outline-none text-sm cursor-pointer"
+          className="w-full p-4 bg-gray-50 border border-dashed border-gray-200 rounded-[24px] focus:ring-2 focus:ring-red-600 outline-none text-sm cursor-pointer hover:bg-gray-100 transition-colors"
         />
         {uploadedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {uploadedFiles.map((f, i) => (
-              <span key={i} className="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full">{f.name}</span>
-            ))}
+          <div className="space-y-2 mt-4 text-left">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-1">Clique no arquivo para visualizar:</p>
+            <div className="flex flex-wrap gap-2">
+              {uploadedFiles.map((f, i) => (
+                <motion.button 
+                  key={i} 
+                  type="button"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.03 }}
+                  onClick={() => setPreviewFileIndex(i)}
+                  className="text-xs bg-red-50 text-red-700 hover:bg-red-100/70 px-3 py-1.5 rounded-full flex items-center gap-2 font-medium border border-red-100 cursor-pointer transition-colors"
+                >
+                  <Eye size={12} className="text-red-500 shrink-0" />
+                  <span className="truncate max-w-[150px]">{f.name}</span>
+                </motion.button>
+              ))}
+            </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      <div className="pt-4">
-        <button 
+      <motion.div variants={itemVariants} className="pt-4">
+        <motion.button 
+          whileHover={{ scale: 1.015, backgroundColor: "#b91c1c" }}
+          whileTap={{ scale: 0.985 }}
           onClick={() => changeStep('summary')}
-          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 hover:bg-red-700 transition-colors"
+          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer transition-colors"
         >
           Próximo Passo
           <ArrowRight size={20} />
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      <button 
+      <motion.button 
+        variants={itemVariants}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         onClick={() => changeStep('quiz')} 
-        className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2"
+        className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
       >
         <ArrowLeft size={14} /> Voltar para o Quiz
-      </button>
+      </motion.button>
     </motion.div>
   );
 
   const renderSummary = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-       <div className="text-center space-y-2 mb-6">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-6"
+    >
+       <motion.div variants={itemVariants} className="text-center space-y-2 mb-6">
           <h2 className="text-2xl font-serif font-bold text-gray-900">Resumo das Suas Respostas</h2>
           <p className="text-sm text-gray-500">Confira as informações que você nos forneceu até agora.</p>
-       </div>
+       </motion.div>
 
-       <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+       <motion.div variants={itemVariants} className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar shadow-inner">
+          {formData.categoria && (
+             <div className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria Selecionada</span>
+                <span className="text-sm font-bold text-red-700 mt-0.5">{formData.categoria}</span>
+             </div>
+          )}
           {quizQuestions.map((q: any, i: number) => (
              <div key={i} className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{q.pergunta}</span>
-                <span className="text-sm font-bold text-gray-700">{formData[q.key as keyof typeof formData] || 'Não informado'}</span>
+                <span className="text-sm font-bold text-gray-700 mt-0.5">{formData[q.key as keyof typeof formData] || 'Não informado'}</span>
              </div>
           ))}
           {customMessage && (
              <div className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descrição do Caso</span>
-                <span className="text-sm font-bold text-gray-700">{customMessage}</span>
+                <span className="text-sm font-bold text-gray-700 mt-0.5">{customMessage}</span>
              </div>
           )}
-       </div>
+       </motion.div>
 
-       <div className="pt-6 space-y-4 text-center">
+       <motion.div variants={itemVariants} className="pt-6 space-y-4 text-center">
           <p className="text-sm font-bold text-gray-700">Deseja acrescentar mais alguma informação para que possamos analisar com mais precisão?</p>
           <div className="grid grid-cols-2 gap-4">
-             <button 
+             <motion.button 
+               whileHover={{ scale: 1.02, backgroundColor: "#fef2f2" }}
+               whileTap={{ scale: 0.98 }}
                onClick={() => changeStep('extra_info')}
-               className="bg-white border-2 border-red-600 text-red-600 py-4 rounded-2xl font-bold hover:bg-red-50 transition-all"
+               className="bg-white border-2 border-red-600 text-red-600 py-4 rounded-2xl font-bold transition-all cursor-pointer"
              >
                Sim, acrescentar
-             </button>
-             <button 
+             </motion.button>
+             <motion.button 
+               whileHover={{ scale: 1.02, backgroundColor: "#b91c1c" }}
+               whileTap={{ scale: 0.98 }}
                onClick={handleStartAnalysis}
-               className="bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-red-700 transition-all"
+               className="bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg transition-all cursor-pointer"
              >
                Não, seguir fluxo
-             </button>
+             </motion.button>
           </div>
-       </div>
+       </motion.div>
 
-        <button 
-          onClick={() => changeStep('upload')} 
-          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2"
-        >
-          <ArrowLeft size={14} /> Voltar
-        </button>
+       <motion.button 
+         variants={itemVariants}
+         whileHover={{ scale: 1.02 }}
+         whileTap={{ scale: 0.98 }}
+         onClick={() => changeStep('upload')} 
+         className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
+       >
+         <ArrowLeft size={14} /> Voltar
+       </motion.button>
     </motion.div>
   );
 
   const renderExtraInfo = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-       <h2 className="text-2xl font-serif font-bold text-gray-900 text-center">Informações Complementares</h2>
-       <p className="text-center text-sm text-gray-500">Acrescente qualquer detalhe que julgar importante para nossa análise IA.</p>
-       <textarea 
-          value={additionalInfo}
-          onChange={e => setAdditionalInfo(e.target.value)}
-          className="w-full p-6 bg-gray-50 border border-gray-100 rounded-[32px] focus:ring-2 focus:ring-red-600 outline-none h-40 text-gray-700"
-          placeholder="Ex: Datas específicas, nomes de envolvidos, valores exatos..."
-       />
-       <button 
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-6"
+    >
+       <motion.h2 variants={itemVariants} className="text-2xl font-serif font-bold text-gray-900 text-center">Informações Complementares</motion.h2>
+       <motion.p variants={itemVariants} className="text-center text-sm text-gray-500">Acrescente qualquer detalhe que julgar importante para nossa análise IA.</motion.p>
+       <motion.div variants={itemVariants}>
+         <textarea 
+            value={additionalInfo}
+            onChange={e => setAdditionalInfo(e.target.value)}
+            className="w-full p-6 bg-gray-50 border border-gray-100 rounded-[32px] focus:ring-2 focus:ring-red-600 outline-none h-40 text-gray-700 focus:bg-white transition-all"
+            placeholder="Ex: Datas específicas, nomes de envolvidos, valores exatos..."
+         />
+       </motion.div>
+       <motion.button 
+          variants={itemVariants}
+          whileHover={{ scale: 1.015, backgroundColor: "#b91c1c" }}
+          whileTap={{ scale: 0.985 }}
           onClick={() => changeStep('full_confirmation')}
-          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 hover:bg-red-700 transition-colors"
+          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer transition-all"
        >
           Prosseguir
           <ArrowRight size={20} />
-       </button>
-       <button 
+       </motion.button>
+       <motion.button 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => changeStep('summary')} 
-          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2"
+          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
        >
           <ArrowLeft size={14} /> Voltar
-       </button>
+       </motion.button>
     </motion.div>
   );
 
   const renderFullConfirmation = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-       <div className="text-center space-y-2 mb-6">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-6"
+    >
+       <motion.div variants={itemVariants} className="text-center space-y-2 mb-6">
           <h2 className="text-2xl font-serif font-bold text-gray-900">Confirmação de Dados</h2>
           <p className="text-sm text-gray-500">Tudo pronto! Confira seu dossiê completo antes da análise.</p>
-       </div>
+       </motion.div>
 
-       <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+       <motion.div variants={itemVariants} className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar shadow-inner">
+          {formData.categoria && (
+             <div className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria Selecionada</span>
+                <span className="text-sm font-bold text-red-700 mt-0.5">{formData.categoria}</span>
+             </div>
+          )}
           {quizQuestions.map((q: any, i: number) => (
              <div key={i} className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{q.pergunta}</span>
-                <span className="text-sm font-bold text-gray-700">{formData[q.key as keyof typeof formData] || 'Não informado'}</span>
+                <span className="text-sm font-bold text-gray-700 mt-0.5">{formData[q.key as keyof typeof formData] || 'Não informado'}</span>
              </div>
           ))}
           {customMessage && (
              <div className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descrição Inicial</span>
-                <span className="text-sm font-bold text-gray-700">{customMessage}</span>
+                <span className="text-sm font-bold text-gray-700 mt-0.5">{customMessage}</span>
              </div>
           )}
           {additionalInfo && (
              <div className="flex flex-col border-b border-gray-200 pb-3 last:border-0">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Informações Complementares</span>
-                <span className="text-sm font-bold text-gray-700 font-serif italic">"{additionalInfo}"</span>
+                <span className="text-sm font-bold text-gray-700 font-serif italic mt-0.5">"{additionalInfo}"</span>
              </div>
           )}
           {uploadedFiles.length > 0 && (
-             <div className="flex flex-col">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Anexos Vinculados</span>
+             <div className="flex flex-col text-left">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Anexos Vinculados (Clique para visualizar)</span>
                 <div className="flex flex-wrap gap-2 mt-2">
                    {uploadedFiles.map((f, i) => (
-                      <span key={i} className="text-[9px] bg-white border border-gray-100 px-2 py-1 rounded-lg text-gray-600">{f.name}</span>
+                      <button 
+                         key={i} 
+                         type="button"
+                         onClick={() => setPreviewFileIndex(i)}
+                         className="text-[9px] bg-white hover:bg-red-50/50 border border-gray-100 hover:border-red-200 px-2 py-1 rounded-lg text-gray-600 hover:text-red-700 font-medium cursor-pointer transition-colors flex items-center gap-1.5"
+                      >
+                         <Eye size={10} className="text-red-500 shrink-0" />
+                         <span>{f.name}</span>
+                      </button>
                    ))}
                 </div>
              </div>
           )}
-       </div>
+       </motion.div>
 
-       <button 
+       <motion.button 
+          variants={itemVariants}
+          whileHover={{ scale: 1.015, backgroundColor: "#b91c1c" }}
+          whileTap={{ scale: 0.985 }}
           onClick={handleStartAnalysis}
-          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 hover:bg-red-700 transition-colors"
+          className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer transition-all"
        >
           Solicitar Análise Gratuita Agora
           <ArrowRight size={20} />
-       </button>
-       <button 
+       </motion.button>
+       <motion.button 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => changeStep('extra_info')} 
-          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2"
+          className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
        >
           <ArrowLeft size={14} /> Corrigir Informações
-       </button>
+       </motion.button>
     </motion.div>
   );
 
   const renderAnalysisStatus = () => (
-    <div className="text-center py-12 space-y-8">
-      <div className="relative w-32 h-32 mx-auto">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="text-center py-12 space-y-8"
+    >
+      <motion.div variants={itemVariants} className="relative w-32 h-32 mx-auto">
         <motion.div 
            animate={{ rotate: 360 }}
            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -957,17 +1153,23 @@ export default function OnlineAnalysisApp() {
         <div className="absolute inset-0 flex items-center justify-center">
           <BrainCircuit className="text-red-600 animate-pulse" size={32} />
         </div>
-      </div>
-      <div>
-        <h2 className="text-2xl font-serif font-bold text-gray-900 mb-2">Processando Cenários</h2>
-        <p className="text-gray-400 text-sm italic">Nossa IA está cruzando seus dados, mensagens e documentos com as legislações vigentes. Sua análise ficará pronta em instantes...</p>
-      </div>
-    </div>
+      </motion.div>
+      <motion.div variants={itemVariants} className="space-y-2">
+        <h2 className="text-2xl font-serif font-bold text-gray-900">Processando Cenários</h2>
+        <p className="text-gray-400 text-sm italic max-w-md mx-auto leading-relaxed">Nossa IA está cruzando seus dados, mensagens e documentos com as legislações vigentes. Sua análise ficará pronta em instantes...</p>
+      </motion.div>
+    </motion.div>
   );
 
   const renderPayment = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <div className="text-center pt-4 space-y-3">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-8"
+    >
+      <motion.div variants={itemVariants} className="text-center pt-4 space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest border border-indigo-100">
           <ShieldCheck size={14} /> Agendamento VIP com Especialista
         </div>
@@ -975,9 +1177,9 @@ export default function OnlineAnalysisApp() {
         <p className="text-gray-500 text-sm md:text-base max-w-md mx-auto">
           Efetue o pagamento da taxa para garantir seu agendamento e liberar seu bônus vip na contratação.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-2xl shadow-indigo-900/5 relative overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-2xl shadow-indigo-900/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 md:p-6 opacity-5 pointer-events-none">
            <Scale size={120} />
         </div>
@@ -1003,12 +1205,12 @@ export default function OnlineAnalysisApp() {
                "Bônus de desconto serviços",
                "Análise jurídica precisa"
              ].map((txt, i) => (
-               <div key={i} className="flex items-center gap-3 text-sm text-gray-600 font-medium">
-                  <div className="w-5 h-5 bg-indigo-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={12} className="text-indigo-600" />
-                  </div>
-                  <span>{txt}</span>
-               </div>
+                <div key={i} className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                   <div className="w-5 h-5 bg-indigo-50 rounded-full flex items-center justify-center flex-shrink-0">
+                     <CheckCircle2 size={12} className="text-indigo-600" />
+                   </div>
+                   <span>{txt}</span>
+                </div>
              ))}
           </div>
 
@@ -1017,13 +1219,16 @@ export default function OnlineAnalysisApp() {
               <div className="flex flex-col items-center justify-center space-y-8">
                  <div className="text-center space-y-4">
                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-relaxed">Escaneie o QR Code abaixo no seu aplicativo bancário</p>
-                   <div className="bg-white p-6 rounded-[2.5rem] inline-block shadow-xl border border-gray-100 mx-auto transform transition-transform hover:scale-105">
+                   <motion.div 
+                     whileHover={{ scale: 1.05 }}
+                     className="bg-white p-6 rounded-[2.5rem] inline-block shadow-xl border border-gray-100 mx-auto transform transition-transform"
+                   >
                       <QRCodeSVG 
                         value={pixInfo.payload} 
                         size={200}
                         className="w-48 h-48 md:w-56 md:h-56"
                       />
-                   </div>
+                   </motion.div>
                  </div>
                  
                  <div className="text-center w-full space-y-3">
@@ -1035,20 +1240,24 @@ export default function OnlineAnalysisApp() {
                         value={pixInfo.payload} 
                         className="w-full sm:flex-1 bg-gray-50 border border-gray-100 text-[10px] p-4 rounded-xl text-gray-400 font-mono focus:outline-none" 
                       />
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.02, backgroundColor: "#0f172a" }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           navigator.clipboard.writeText(pixInfo.payload);
                           alert("Código PIX copiado!");
                         }} 
-                        className="w-full sm:w-auto bg-[#1e293b] hover:bg-black text-white py-4 px-8 rounded-xl font-black shadow-lg transition-all whitespace-nowrap active:scale-95"
+                        className="w-full sm:w-auto bg-[#1e293b] text-white py-4 px-8 rounded-xl font-black shadow-lg cursor-pointer transition-all whitespace-nowrap"
                       >
                         Copiar
-                      </button>
+                      </motion.button>
                    </div>
                  </div>
               </div>
             ) : (
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.015, backgroundColor: "#b91c1c" }}
+                whileTap={{ scale: 0.985 }}
                 onClick={() => {
                   if (checkoutUrl && checkoutUrl !== '#') {
                      window.open(checkoutUrl, '_blank');
@@ -1059,15 +1268,17 @@ export default function OnlineAnalysisApp() {
                      });
                   }
                 }}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-red-900/10 flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 active:translate-y-0"
+                className="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-red-900/10 flex items-center justify-center gap-3 cursor-pointer transition-all"
               >
                  EFETUAR PAGAMENTO AGORA
                  <ArrowRight size={22} />
-              </button>
+              </motion.button>
             )}
             
             <div className="flex flex-col gap-2">
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => {
                   const isApproved = leadData && (
                     leadData.status === 'PAGO' || 
@@ -1081,25 +1292,31 @@ export default function OnlineAnalysisApp() {
                     changeStep('waiting_payment');
                   }
                 }}
-                className="w-full py-4 text-[10px] font-black text-gray-400 hover:text-gray-600 uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-4 text-[10px] font-black text-gray-400 hover:text-gray-600 uppercase tracking-[0.2em] flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <ShieldCheck size={16} /> Já realizei o pagamento? Verificar status
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex items-center justify-center gap-4 text-gray-300">
+      <motion.div variants={itemVariants} className="flex items-center justify-center gap-4 text-gray-300">
          <Lock size={14} />
          <span className="text-[9px] font-black uppercase tracking-[0.2em]">Pagamento Seguro via SSL 256 bits</span>
-      </div>
+      </motion.div>
     </motion.div>
   );
 
   const renderWaitingPayment = () => (
-    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="space-y-8 text-center py-4">
-      <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-gray-50 text-center space-y-8 relative overflow-hidden">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-8 text-center py-4"
+    >
+      <motion.div variants={itemVariants} className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-gray-50 text-center space-y-8 relative overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-1 bg-blue-600/20">
           <motion.div 
             initial={{ width: "0%" }}
@@ -1150,29 +1367,35 @@ export default function OnlineAnalysisApp() {
         </div>
 
         <div className="space-y-4 pt-2">
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.015, backgroundColor: "#0f172a" }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => window.location.href = `/acompanhar`}
-            className="w-full bg-[#1e293b] hover:bg-black text-white py-5 rounded-2xl font-black shadow-xl flex items-center justify-center gap-3 hover:translate-y-[-2px] transition-all"
+            className="w-full bg-[#1e293b] text-white py-5 rounded-2xl font-black shadow-xl flex items-center justify-center gap-3 cursor-pointer transition-all"
           >
             Acompanhar Consulta Pública
             <ArrowRight size={18} />
-          </button>
+          </motion.button>
           
           <div className="flex flex-col md:flex-row gap-3">
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => changeStep('payment')}
-              className="flex-1 py-3 text-xs font-bold text-gray-400 hover:text-[#1e293b] flex items-center justify-center gap-2 border border-transparent hover:border-gray-200 rounded-xl transition-all"
+              className="flex-1 py-3 text-xs font-bold text-gray-400 hover:text-[#1e293b] flex items-center justify-center gap-2 border border-transparent hover:border-gray-200 rounded-xl cursor-pointer transition-all"
             >
               <ArrowLeft size={14} /> Voltar para o PIX
-            </button>
-            <a 
+            </motion.button>
+            <motion.a 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               href={`https://wa.me/5511999999999?text=Oi, já fiz o pagamento no App Online mas ainda não foi identificado.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-3 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center justify-center gap-2 border border-transparent hover:border-blue-50 rounded-xl transition-all"
+              className="flex-1 py-3 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center justify-center gap-2 border border-transparent hover:border-blue-50 rounded-xl cursor-pointer transition-all"
             >
               <MessageCircle size={16} /> Suporte WhatsApp
-            </a>
+            </motion.a>
           </div>
         </div>
 
@@ -1181,29 +1404,37 @@ export default function OnlineAnalysisApp() {
             "Aguarde nesta tela por favor. O redirecionamento para o resultado é instantâneo após a confirmação."
           </p>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 
   const renderResult = () => (
-    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="space-y-8">
-      <div className="bg-green-50 text-green-700 p-6 rounded-[40px] border border-green-100 inline-block text-center w-full">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="space-y-8"
+    >
+      <motion.div variants={itemVariants} className="bg-green-50 text-green-700 p-6 rounded-[40px] border border-green-100 inline-block text-center w-full">
          <CheckCircle2 size={48} className="mx-auto mb-4" />
          <h2 className="text-2xl font-serif font-bold">Análise IA Concluída!</h2>
          <p className="text-sm mt-2">Seu Parecer Gratuito está pronto para visualização abaixo.</p>
-         <button 
+         <motion.button 
+           whileHover={{ scale: 1.05 }}
+           whileTap={{ scale: 0.95 }}
            onClick={() => {
              alert("Enviando parecer em PDF para seu e-mail e WhatsApp...");
              window.print();
            }}
-           className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-green-700 px-4 py-2 rounded-full shadow-sm hover:scale-105 transition-all"
+           className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-green-700 px-4 py-2 rounded-full shadow-sm hover:scale-105 transition-all cursor-pointer"
          >
            <ClipboardList size={14} />
            Baixar Parecer (PDF)
-         </button>
-      </div>
+         </motion.button>
+      </motion.div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
             <p className="text-[10px] text-gray-400 font-black uppercase mb-1">Score de Êxito</p>
             <p className="text-4xl font-black text-red-600">{analysisResult?.score}%</p>
@@ -1215,9 +1446,9 @@ export default function OnlineAnalysisApp() {
               analysisResult?.level === 'Alto' ? 'text-green-600' : 'text-amber-500'
             )}>{analysisResult?.level}</p>
          </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-gray-900 text-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] text-left shadow-2xl relative overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-gray-900 text-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] text-left shadow-2xl relative overflow-hidden">
          <div className="absolute top-0 right-0 p-8 opacity-10">
             <Scale size={80} />
          </div>
@@ -1235,10 +1466,10 @@ export default function OnlineAnalysisApp() {
          <div className="prose prose-invert prose-p:leading-relaxed max-w-none text-sm md:text-base markdown-body">
             <Markdown>{analysisResult?.strategy || 'Analisando e validando as evidências e fatos. Entraremos em contato com a estratégia ideal via WhatsApp.'}</Markdown>
          </div>
-      </div>
+      </motion.div>
 
       {/* VIP OFFER SECTION */}
-      <div className="bg-[#f8fafc] p-8 md:p-12 rounded-[40px] border-4 border-indigo-50 shadow-2xl space-y-8 relative overflow-hidden group">
+      <motion.div variants={itemVariants} className="bg-[#f8fafc] p-8 md:p-12 rounded-[40px] border-4 border-indigo-50 shadow-2xl space-y-8 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-indigo-900 group-hover:scale-110 transition-transform">
            <BrainCircuit size={160} />
         </div>
@@ -1260,9 +1491,9 @@ export default function OnlineAnalysisApp() {
                    <MessageSquare className="text-indigo-600" size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Marque uma reunião por <strong>ligação, vídeo chamada ou mensagem</strong> para explicar seu caso com mais detalhes.
-                  </p>
+                   <p className="text-sm text-gray-600 leading-relaxed">
+                     Marque uma reunião por <strong>ligação, vídeo chamada ou mensagem</strong> para explicar seu caso com mais detalhes.
+                   </p>
                 </div>
              </div>
              
@@ -1271,9 +1502,9 @@ export default function OnlineAnalysisApp() {
                    <TrendingUp className="text-green-600" size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                   Com nossos especialistas, a busca por solução é <strong>mais precisa e objetiva</strong>. Aproveite este próximo passo!
-                  </p>
+                   <p className="text-sm text-gray-600 leading-relaxed">
+                    Com nossos especialistas, a busca por solução é <strong>mais precisa e objetiva</strong>. Aproveite este próximo passo!
+                   </p>
                 </div>
              </div>
           </div>
@@ -1285,12 +1516,14 @@ export default function OnlineAnalysisApp() {
                  <h4 className="text-4xl font-black">R$ 47,00</h4>
                  <p className="text-[9px] font-bold text-indigo-200 uppercase tracking-tighter italic">* O valor do agendamento vira bônus de desconto na contratação!</p>
               </div>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.05, backgroundColor: "#f8fafc" }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => changeStep('payment')}
-                className="w-full md:w-auto bg-white text-indigo-900 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-lg active:scale-95"
+                className="w-full md:w-auto bg-white text-indigo-900 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg cursor-pointer"
               >
                 Eu quero acesso VIP por R$ 47
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -1298,41 +1531,49 @@ export default function OnlineAnalysisApp() {
             Não perca mais tempo e vamos juntos buscar seus direitos!
           </p>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="space-y-4 pt-8">
+      <motion.div variants={itemVariants} className="space-y-4 pt-8">
         <p className="text-gray-400 text-[11px] text-center uppercase tracking-widest font-bold">Ou se preferir encerrar agora:</p>
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => changeStep('done')}
-          className="w-full py-4 text-gray-400 font-bold text-xs hover:text-gray-600 tracking-widest uppercase transition-all"
+          className="w-full py-4 text-gray-400 font-bold text-xs hover:text-gray-600 tracking-widest uppercase transition-all cursor-pointer"
         >
           Finalizar Atendimento Gratuito
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
     </motion.div>
   );
 
   const renderDone = () => (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-6 py-8">
-      <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-green-900/10 mb-6">
+    <motion.div 
+      variants={stepVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="text-center space-y-6 py-8"
+    >
+      <motion.div variants={itemVariants} className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-green-900/10 mb-6">
         <CheckCircle2 size={48} />
-      </div>
-      <h2 className="text-3xl font-serif font-black text-gray-900 mb-2">
+      </motion.div>
+      <motion.h2 variants={itemVariants} className="text-3xl font-serif font-black text-gray-900 mb-2">
         {isVip ? 'Agendamento VIP Confirmado!' : 'Atendimento Concluído!'}
-      </h2>
-      <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+      </motion.h2>
+      <motion.p variants={itemVariants} className="text-gray-500 max-w-md mx-auto leading-relaxed text-sm">
         {isVip 
           ? 'Recebemos seu agendamento VIP. Nossa equipe entrará em contato em até 24h úteis para marcar sua reunião via ligação ou vídeo-chamada.' 
           : 'Recebemos sua análise gratuita. Caso deseje um agendamento posterior, entre em contato via nosso canal oficial de suporte.'}
-      </p>
+      </motion.p>
       {isVip && (
-        <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 text-indigo-900 font-bold text-xs uppercase tracking-widest">
+        <motion.div variants={itemVariants} className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 text-indigo-900 font-bold text-xs uppercase tracking-widest">
            Lembre-se: O valor pago será abatido como bônus na sua contratação final!
-        </div>
+        </motion.div>
       )}
-      <div className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm font-bold text-gray-400">
+      <motion.div variants={itemVariants} className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm font-bold text-gray-400">
         Você pode fechar esta tela e aguardar nosso retorno.
-      </div>
+      </motion.div>
     </motion.div>
   );
 
@@ -1454,6 +1695,119 @@ export default function OnlineAnalysisApp() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {previewFileIndex !== null && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[32px] overflow-hidden max-w-2xl w-full shadow-2xl flex flex-col max-h-[85vh] border border-gray-100 text-left"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-red-50 text-[#7a0f1a] rounded-2xl flex items-center justify-center shrink-0">
+                    <FileText size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-serif font-bold text-gray-900 truncate pr-4 text-sm md:text-base">
+                      {uploadedFiles[previewFileIndex]?.name}
+                    </h3>
+                    <p className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-wider">
+                      {uploadedFiles[previewFileIndex] ? formatFileSize(uploadedFiles[previewFileIndex].size) : ''}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPreviewFileIndex(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors cursor-pointer shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Content Body */}
+              <div className="flex-1 p-6 overflow-y-auto bg-gray-50 flex flex-col justify-center min-h-[300px]">
+                {uploadedFiles[previewFileIndex] && (
+                  (() => {
+                    const file = uploadedFiles[previewFileIndex];
+                    const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+                    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+                    const fileData = filesBase64[previewFileIndex];
+
+                    if (isImg && fileData) {
+                      return (
+                        <div className="flex justify-center items-center">
+                          <img 
+                            src={fileData} 
+                            alt={file.name} 
+                            className="max-w-full max-h-[50vh] object-contain rounded-2xl shadow-md border border-gray-200 bg-white" 
+                          />
+                        </div>
+                      );
+                    } else if (isPdf && fileData) {
+                      return (
+                        <div className="w-full h-[50vh] rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-inner flex flex-col">
+                          <iframe 
+                            src={fileData} 
+                            className="w-full flex-1 border-0"
+                            title="Visualização PDF"
+                          />
+                          <div className="bg-gray-100/80 px-4 py-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 font-semibold">
+                            <span>Visualizador Integrado PDF</span>
+                            <span className="flex items-center gap-1 text-emerald-600">
+                              <ShieldCheck size={14} /> Dossiê Seguro
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="text-center space-y-4 py-8">
+                          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                            <FileText size={32} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm">Visualização direta indisponível para este formato</p>
+                            <p className="text-xs text-gray-400 mt-1">O arquivo foi carregado e está pronto para análise técnica.</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })()
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+                <div className="flex items-center gap-2 text-gray-400">
+                  <ShieldCheck size={16} className="text-green-500" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Verificado por GSA Security</span>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {uploadedFiles[previewFileIndex] && filesBase64[previewFileIndex] && (
+                    <a 
+                      href={filesBase64[previewFileIndex]} 
+                      download={uploadedFiles[previewFileIndex].name}
+                      className="flex-1 sm:flex-none bg-gray-900 hover:bg-black text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer text-center"
+                    >
+                      <Download size={14} /> Download
+                    </a>
+                  )}
+                  <button 
+                    onClick={() => setPreviewFileIndex(null)}
+                    className="flex-1 sm:flex-none border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

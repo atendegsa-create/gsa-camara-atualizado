@@ -176,6 +176,18 @@
     "/modelos_esteira/{modeloId}": {
       "schema": "ModeloEsteira",
       "description": "Modelos de esteiras e tipos de ações jurídicas."
+    },
+    "/processo_rapido_templates/{templateId}": {
+      "schema": "object",
+      "description": "Modelos de esteiras configuradas para Processo Rápido."
+    },
+    "/processo_rapido_casos/{caseId}": {
+      "schema": "object",
+      "description": "Casos de Processo Rápido criados por consultores ou preenchidos por clientes."
+    },
+    "/processo_rapido_notificacoes/{notificationId}": {
+      "schema": "object",
+      "description": "Notificações internas de andamento e saneamento do Processo Rápido."
     }
   }
 }

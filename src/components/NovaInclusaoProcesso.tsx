@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Sparkles, Keyboard, FileText, UploadCloud, Eye, ExternalLink, ShieldCheck, ArrowRight, ChevronLeft } from 'lucide-react';
+import { Sparkles, Keyboard, FileText, UploadCloud, Eye, ExternalLink, ShieldCheck, ArrowRight, ChevronLeft, Scale, Gavel } from 'lucide-react';
 import { gerarHashDocumento } from '../lib/hashUtils';
 import { validateDocumentIa } from '../services/geminiService';
 import { createProcess } from '../lib/db';
@@ -23,7 +23,77 @@ interface NovoProcessoForm {
 
 export default function NovaInclusaoProcesso() {
   const [modoInclusao, setModoInclusao] = useState<'inteligente' | 'manual'>('inteligente');
+  const [tipoJustica, setTipoJustica] = useState<'extrajudicial' | 'judicial' | null>(null);
   const navigate = useNavigate();
+
+  if (!tipoJustica) {
+    return (
+      <div className="w-full min-h-screen bg-slate-900 text-white p-6 md:p-8 flex items-center justify-center">
+        <div className="max-w-4xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
+              Novo Protocolo GSA
+            </h1>
+            <p className="text-slate-400 text-sm md:text-base max-w-xl mx-auto">
+              Selecione o rito ideal para dar início ao processo ou mediação do seu cliente.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            {/* CARD EXTRAJUDICIAL */}
+            <button
+              id="btn-selecionar-extrajudicial"
+              onClick={() => setTipoJustica('extrajudicial')}
+              className="group bg-slate-800/40 border border-slate-700 hover:border-amber-500/50 hover:bg-slate-800/85 p-8 rounded-3xl text-left transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/5 transform hover:-translate-y-1 flex flex-col justify-between min-h-[250px]"
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-6 group-hover:scale-110 transition-transform">
+                  <Scale size={28} />
+                </div>
+                <h3 className="font-bold text-xl text-white mb-2">Procedimento Extrajudicial</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Inicie mediação, conciliação consensual ou rito de acordo amigável com força de título executivo extrajudicial.
+                </p>
+              </div>
+              <span className="text-amber-500 font-bold text-sm inline-flex items-center gap-2 mt-6">
+                Iniciar Extrajudicial <ArrowRight size={16} />
+              </span>
+            </button>
+
+            {/* CARD JUDICIAL */}
+            <button
+              id="btn-selecionar-judicial"
+              onClick={() => setTipoJustica('judicial')}
+              className="group bg-slate-800/40 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800/85 p-8 rounded-3xl text-left transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/5 transform hover:-translate-y-1 flex flex-col justify-between min-h-[250px]"
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Gavel size={28} />
+                </div>
+                <h3 className="font-bold text-xl text-white mb-2">Procedimento Judicial</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Encaminhe a petição inicial ou dossier de provas para distribuição em juízo cível, revisional ou indenizatório.
+                </p>
+              </div>
+              <span className="text-blue-400 font-bold text-sm inline-flex items-center gap-2 mt-6">
+                Iniciar Judicial <ArrowRight size={16} />
+              </span>
+            </button>
+          </div>
+
+          <div className="text-center pt-4">
+            <button
+              id="btn-voltar-painel"
+              onClick={() => navigate('..', { relative: 'path' })}
+              className="text-slate-500 hover:text-slate-300 text-sm font-semibold inline-flex items-center gap-1 transition-colors"
+            >
+              <ChevronLeft size={16} /> Voltar ao Painel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen bg-slate-900 text-white p-6 md:p-8">
@@ -33,23 +103,41 @@ export default function NovaInclusaoProcesso() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-4">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('..', { relative: 'path' })}
+              id="btn-voltar-rito"
+              onClick={() => setTipoJustica(null)}
               className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-300"
+              title="Voltar para seleção de rito"
             >
               <ChevronLeft size={24} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Novo Processo</h1>
-              <p className="text-sm text-slate-400">Inicie um novo procedimento de mediação extrajudicial.</p>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-bold">
+                  {tipoJustica === 'extrajudicial' ? 'Novo Processo Extrajudicial' : 'Novo Processo Judicial'}
+                </h1>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                  tipoJustica === 'judicial' 
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
+                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                }`}>
+                  {tipoJustica === 'judicial' ? 'Rito Judicial' : 'Rito Extrajudicial'}
+                </span>
+              </div>
+              <p className="text-sm text-slate-400">
+                {tipoJustica === 'extrajudicial' 
+                  ? 'Inicie um novo procedimento de mediação extrajudicial.' 
+                  : 'Inicie um novo ajuizamento ou procedimento judicial cível.'}
+              </p>
             </div>
           </div>
 
           <div className="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 backdrop-blur-sm w-fit">
             <button
+              id="btn-modo-inteligente"
               onClick={() => setModoInclusao('inteligente')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
                 modoInclusao === 'inteligente' 
-                  ? 'bg-amber-500 text-slate-950 shadow-md' 
+                  ? (tipoJustica === 'judicial' ? 'bg-blue-600 text-white shadow-md' : 'bg-amber-500 text-slate-950 shadow-md')
                   : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
               }`}
             >
@@ -57,6 +145,7 @@ export default function NovaInclusaoProcesso() {
               Leitura Inteligente (IA)
             </button>
             <button
+              id="btn-modo-manual"
               onClick={() => setModoInclusao('manual')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
                 modoInclusao === 'manual' 
@@ -71,7 +160,11 @@ export default function NovaInclusaoProcesso() {
         </div>
 
         {/* RENDERIZAÇÃO CONDICIONAL BASEADA NA ABA SELECIONADA */}
-        {modoInclusao === 'inteligente' ? <FormularioInteligente /> : <FormularioManual />}
+        {modoInclusao === 'inteligente' ? (
+          <FormularioInteligente tipoJustica={tipoJustica} />
+        ) : (
+          <FormularioManual tipoJustica={tipoJustica} />
+        )}
 
       </div>
     </div>
@@ -81,7 +174,7 @@ export default function NovaInclusaoProcesso() {
 // ============================================================================
 // COMPONENTE 1: INCLUSÃO INTELIGENTE (SPLIT-SCREEN)
 // ============================================================================
-function FormularioInteligente() {
+function FormularioInteligente({ tipoJustica }: { tipoJustica: 'extrajudicial' | 'judicial' }) {
   const { register, setValue, handleSubmit } = useForm<NovoProcessoForm>();
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string | null>(null);
@@ -142,9 +235,9 @@ function FormularioInteligente() {
   const onSubmit = async (data: NovoProcessoForm) => {
     if (!profile) return;
     try {
-    const nup = `GSA-${new Date().getFullYear()}${new Date().getMonth() + 1}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const nup = `GSA-${new Date().getFullYear()}${new Date().getMonth() + 1}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const docId = await createProcess({
+      const docId = await createProcess({
         nup,
         status: 'TRIAGEM' as ProcessStatus,
         tipo_acao: 'Documento Digitalizado',
@@ -155,8 +248,13 @@ function FormularioInteligente() {
         criado_por: auth.currentUser?.uid,
         cliente_id: auth.currentUser?.uid,
         documento_hash: fileHash,
+        tipoJustica: tipoJustica,
         logs: [
-          { status: 'TRIAGEM', mensagem: "Processo avulso criado via painel inteligente.", data: new Date().toISOString() }
+          { 
+            status: 'TRIAGEM', 
+            mensagem: `Processo avulso criado via painel inteligente (${tipoJustica === 'judicial' ? 'Judicial' : 'Extrajudicial'}).`, 
+            data: new Date().toISOString() 
+          }
         ]
       }, profile);
 
@@ -165,6 +263,7 @@ function FormularioInteligente() {
         status: 'TRIAGEM' as ProcessStatus,
         tipo_acao: 'Documento Digitalizado',
         cliente_documento: data.cliente_documento || 'ND',
+        tipoJustica: tipoJustica,
         criado_em: serverTimestamp(),
         logs: [
           { status: 'TRIAGEM', data: new Date().toISOString() }
@@ -185,11 +284,17 @@ function FormularioInteligente() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Esquerda: Formulário e Upload */}
       <div className="bg-slate-800/50 backdrop-blur-md border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
-        <div className="border-2 border-dashed border-slate-600 hover:border-amber-400 rounded-xl p-6 transition text-center cursor-pointer relative bg-slate-900/40 group">
+        <div className={`border-2 border-dashed border-slate-600 rounded-xl p-6 transition text-center cursor-pointer relative bg-slate-900/40 group ${
+          tipoJustica === 'judicial' ? 'hover:border-blue-400' : 'hover:border-amber-400'
+        }`}>
           <input type="file" accept=".pdf,image/*" onChange={handleDocumentUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
           <div className="flex flex-col items-center gap-3">
-            <div className="p-3 bg-slate-800 rounded-full group-hover:bg-amber-500/20 transition-colors">
-              <UploadCloud className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors" />
+            <div className={`p-3 bg-slate-800 rounded-full transition-colors ${
+              tipoJustica === 'judicial' ? 'group-hover:bg-blue-500/20' : 'group-hover:bg-amber-500/20'
+            }`}>
+              <UploadCloud className={`w-8 h-8 text-slate-400 transition-colors ${
+                tipoJustica === 'judicial' ? 'group-hover:text-blue-400' : 'group-hover:text-amber-400'
+              }`} />
             </div>
             <div>
               <p className="text-sm font-medium text-slate-200">Arraste a Petição Inicial ou Contrato</p>
@@ -199,7 +304,11 @@ function FormularioInteligente() {
         </div>
 
         {loadingAI && (
-          <div className="text-xs text-amber-400 flex items-center gap-2 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+          <div className={`text-xs flex items-center gap-2 p-3 rounded-lg border ${
+            tipoJustica === 'judicial' 
+              ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' 
+              : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+          }`}>
             <span className="animate-spin">🔄</span> Lendo documento e preenchendo campos...
           </div>
         )}
@@ -208,20 +317,28 @@ function FormularioInteligente() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-400">Requerente (Nome)</label>
-              <input {...register('cliente_nome')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all" />
+              <input {...register('cliente_nome')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400 focus:ring-blue-400' : 'focus:border-amber-400 focus:ring-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">CPF / CNPJ</label>
-              <input {...register('cliente_documento')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all" />
+              <input {...register('cliente_documento')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400 focus:ring-blue-400' : 'focus:border-amber-400 focus:ring-amber-400'
+              }`} />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-400"> Valor da Causa / Dívida (R$)</label>
-            <input type="number" step="0.01" {...register('valor_causa')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all" />
+            <input type="number" step="0.01" {...register('valor_causa')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+              tipoJustica === 'judicial' ? 'focus:border-blue-400 focus:ring-blue-400' : 'focus:border-amber-400 focus:ring-amber-400'
+            }`} />
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-400">Resumo dos Fatos</label>
-            <textarea {...register('resumo_fato')} rows={3} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all" placeholder="Revise ou complete o resumo da causa..." />
+            <textarea {...register('resumo_fato')} rows={3} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+              tipoJustica === 'judicial' ? 'focus:border-blue-400 focus:ring-blue-400' : 'focus:border-amber-400 focus:ring-amber-400'
+            }`} placeholder={tipoJustica === 'judicial' ? 'Revise ou complete o resumo da petição judicial...' : 'Revise ou complete o resumo da mediação extrajudicial...'} />
           </div>
 
           {fileHash && (
@@ -231,7 +348,11 @@ function FormularioInteligente() {
              </div>
           )}
 
-          <button type="submit" className="w-full flex justify-center items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold p-3 rounded-lg transition-colors text-sm">
+          <button type="submit" className={`w-full flex justify-center items-center gap-2 font-bold p-3 rounded-lg transition-colors text-sm ${
+            tipoJustica === 'judicial' 
+              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+              : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+          }`}>
             Protocolar com Evidência <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -244,7 +365,11 @@ function FormularioInteligente() {
             <FileText className="w-4 h-4 text-slate-400" /> Pré-visualização do Documento
           </h3>
           {filePreviewUrl && (
-            <a href={filePreviewUrl} target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-amber-500/30 transition-all">
+            <a href={filePreviewUrl} target="_blank" rel="noreferrer" className={`text-xs flex items-center gap-1 bg-slate-900/50 px-3 py-1.5 rounded-lg border transition-all ${
+              tipoJustica === 'judicial' 
+                ? 'text-blue-400 hover:text-blue-300 border-slate-700 hover:border-blue-500/30' 
+                : 'text-amber-400 hover:text-amber-300 border-slate-700 hover:border-amber-500/30'
+            }`}>
               Abrir numa aba dedicada <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -253,7 +378,7 @@ function FormularioInteligente() {
           {filePreviewUrl ? (
             fileType === 'application/pdf' ? (
               <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-                <FileText className="w-16 h-16 text-amber-500 mb-2" />
+                <FileText className={`w-16 h-16 mb-2 ${tipoJustica === 'judicial' ? 'text-blue-500' : 'text-amber-500'}`} />
                 <h4 className="text-lg font-bold text-slate-200">PDF Carregado e Analisado</h4>
                 <p className="text-sm text-slate-400 max-w-[300px]">
                   A visualização embutida de PDFs pode ser bloqueada pelo navegador atual. Para ler o documento original, abra numa nova aba.
@@ -262,7 +387,11 @@ function FormularioInteligente() {
                   href={filePreviewUrl} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="inline-flex items-center gap-2 bg-slate-800 text-amber-400 border border-slate-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-700 transition-colors mt-4"
+                  className={`inline-flex items-center gap-2 border px-6 py-2.5 rounded-xl font-bold transition-colors mt-4 ${
+                    tipoJustica === 'judicial' 
+                      ? 'bg-slate-800 text-blue-400 border-slate-700 hover:bg-slate-700' 
+                      : 'bg-slate-800 text-amber-400 border-slate-700 hover:bg-slate-700'
+                  }`}
                 >
                   Abrir PDF Original <ExternalLink size={16} />
                 </a>
@@ -287,7 +416,7 @@ function FormularioInteligente() {
 // ============================================================================
 // COMPONENTE 2: INCLUSÃO MANUAL (TRADICIONAL)
 // ============================================================================
-function FormularioManual() {
+function FormularioManual({ tipoJustica }: { tipoJustica: 'extrajudicial' | 'judicial' }) {
   const { register, handleSubmit } = useForm<NovoProcessoForm>();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -312,8 +441,13 @@ function FormularioManual() {
         resumo_fato: data.resumo_fato || '',
         criado_por: auth.currentUser?.uid,
         cliente_id: auth.currentUser?.uid,
+        tipoJustica: tipoJustica,
         logs: [
-          { status: 'TRIAGEM', mensagem: "Processo avulso criado via painel manual.", data: new Date().toISOString() }
+          { 
+            status: 'TRIAGEM', 
+            mensagem: `Processo avulso criado via painel manual (${tipoJustica === 'judicial' ? 'Judicial' : 'Extrajudicial'}).`, 
+            data: new Date().toISOString() 
+          }
         ]
       }, profile);
 
@@ -322,6 +456,7 @@ function FormularioManual() {
         status: 'TRIAGEM' as ProcessStatus,
         tipo_acao: 'Documento Digitalizado',
         cliente_documento: data.cliente_documento || 'ND',
+        tipoJustica: tipoJustica,
         criado_em: serverTimestamp(),
         logs: [
           { status: 'TRIAGEM', data: new Date().toISOString() }
@@ -344,60 +479,92 @@ function FormularioManual() {
         
         {/* Bloco Requerente */}
         <div>
-          <h3 className="text-sm font-semibold text-amber-500 mb-3 border-b border-slate-700 pb-2">Dados do Requerente</h3>
+          <h3 className={`text-sm font-semibold mb-3 border-b border-slate-700 pb-2 ${
+            tipoJustica === 'judicial' ? 'text-blue-400' : 'text-amber-500'
+          }`}>
+            {tipoJustica === 'judicial' ? 'Dados do Autor (Requerente)' : 'Dados do Requerente'}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-400">Nome Completo / Razão Social</label>
-              <input {...register('cliente_nome', { required: true })} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input {...register('cliente_nome', { required: true })} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">Documento (CPF/CNPJ)</label>
-              <input {...register('cliente_documento')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input {...register('cliente_documento')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">E-mail</label>
-              <input type="email" {...register('cliente_email')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input type="email" {...register('cliente_email')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">WhatsApp</label>
-              <input {...register('cliente_whatsapp')} placeholder="+55" className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input {...register('cliente_whatsapp')} placeholder="+55" className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
           </div>
         </div>
 
         {/* Bloco Requerido */}
         <div>
-          <h3 className="text-sm font-semibold text-amber-500 mb-3 border-b border-slate-700 pb-2">Dados do Requerido (Parte Contrária)</h3>
+          <h3 className={`text-sm font-semibold mb-3 border-b border-slate-700 pb-2 ${
+            tipoJustica === 'judicial' ? 'text-blue-400' : 'text-amber-500'
+          }`}>
+            {tipoJustica === 'judicial' ? 'Dados do Réu (Parte Contrária)' : 'Dados do Requerido (Parte Contrária)'}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-400">Nome da Parte Contrária</label>
-              <input {...register('parte_contraria_nome')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input {...register('parte_contraria_nome')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">WhatsApp do Requerido (Para Citação)</label>
-              <input {...register('parte_contraria_telefone')} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input {...register('parte_contraria_telefone')} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
           </div>
         </div>
 
         {/* Bloco Resumo */}
         <div>
-          <h3 className="text-sm font-semibold text-amber-500 mb-3 border-b border-slate-700 pb-2">Detalhes da Mediação</h3>
+          <h3 className={`text-sm font-semibold mb-3 border-b border-slate-700 pb-2 ${
+            tipoJustica === 'judicial' ? 'text-blue-400' : 'text-amber-500'
+          }`}>
+            {tipoJustica === 'judicial' ? 'Detalhes da Causa Judicial' : 'Detalhes da Mediação'}
+          </h3>
           <div className="grid grid-cols-1 gap-4">
              <div>
               <label className="text-xs font-semibold text-slate-400">Valor da Causa / Dívida (R$)</label>
-              <input type="number" step="0.01" {...register('valor_causa')} className="mt-1 w-full md:w-1/3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" />
+              <input type="number" step="0.01" {...register('valor_causa')} className={`mt-1 w-full md:w-1/3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400">Breve Relato / Fatos</label>
-              <textarea {...register('resumo_fato')} rows={4} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-400 transition-colors" placeholder="Descreva os motivos da mediação..." />
+              <textarea {...register('resumo_fato')} rows={4} className={`mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none transition-colors ${
+                tipoJustica === 'judicial' ? 'focus:border-blue-400' : 'focus:border-amber-400'
+              }`} placeholder={tipoJustica === 'judicial' ? 'Descreva os motivos e fatos da ação judicial...' : 'Descreva os motivos da mediação...'} />
             </div>
           </div>
         </div>
 
         <div className="pt-4 flex justify-end">
-           <button type="submit" className="bg-slate-200 hover:bg-white text-slate-900 font-bold px-8 py-3 rounded-lg transition-colors text-sm shadow-md">
-             Criar Processo Manualmente
+           <button type="submit" className={`font-bold px-8 py-3 rounded-lg transition-colors text-sm shadow-md ${
+             tipoJustica === 'judicial' 
+               ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+               : 'bg-slate-200 hover:bg-white text-slate-900'
+           }`}>
+             {tipoJustica === 'judicial' ? 'Criar Processo Judicial' : 'Criar Processo Manualmente'}
            </button>
         </div>
       </form>

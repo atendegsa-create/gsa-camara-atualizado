@@ -287,6 +287,33 @@ service cloud.firestore {
        allow read, write: if isMaster() || isAuthenticated();
     }
 
+    // =========================================================================
+    // REGRAS PARA PROCESSO RÁPIDO
+    // =========================================================================
+    match /processo_rapido_templates/{templateId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    match /processo_rapido_casos/{caseId} {
+      allow get: if true;
+      allow list: if isMaster() || isAnalista() || (isAuthenticated() && (
+        resource.data.get('unitId', '') == getUserTenantId() || 
+        resource.data.get('unitId', '') == request.auth.uid || 
+        resource.data.get('referrerId', '') == request.auth.uid
+      ));
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isMaster() || (isAuthenticated() && resource.data.get('referrerId', '') == request.auth.uid);
+    }
+
+    match /processo_rapido_notificacoes/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isMaster();
+    }
+
     // Fallback Restrito
     match /{document=**} {
       allow read, write: if isMaster();

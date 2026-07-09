@@ -7,7 +7,7 @@ import { db } from '../lib/firebase';
 const router = express.Router();
 
 router.post('/analyze', verifyToken, async (req, res) => {
-  const { quizScore, descricao, situacao_atual, objetivo } = req.body;
+  const { quizScore, descricao, situacao_atual, objetivo, categoria } = req.body;
   
   try {
     const fallbackAnalysis = {
@@ -18,6 +18,7 @@ router.post('/analyze', verifyToken, async (req, res) => {
 
     const analysis = await executeAI(async () => {
       const prompt = `Analise este caso jurídico:
+      - Categoria Pré-classificada: ${categoria || 'Não selecionada'}
       - Score do Quiz: ${quizScore}
       - Descrição: ${descricao}
       - Situação Atual: ${situacao_atual}

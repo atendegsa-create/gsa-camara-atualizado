@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { signInWithGoogle, logout, auth } from './lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { Scale, LogOut, FileText, Settings, Activity, DollarSign, Menu, X, Users, Home, Plus, LayoutTemplate, Copy, Key, Mail, Lock, Loader2, BrainCircuit, Zap, AlertTriangle, ArrowRight, Send, ClipboardList, Building2, ShieldAlert, Palette, BarChart, Sparkles, Share2, Video, Briefcase, UploadCloud, Store, Shield, PenTool, Percent, LayoutGrid } from 'lucide-react';
+import { Scale, LogOut, FileText, Settings, Activity, DollarSign, Menu, X, Users, Home, Plus, LayoutTemplate, Copy, Key, Mail, Lock, Loader2, BrainCircuit, Zap, AlertTriangle, ArrowRight, Send, ClipboardList, Building2, ShieldAlert, Palette, BarChart, Sparkles, Share2, Video, Briefcase, UploadCloud, Store, Shield, PenTool, Percent, LayoutGrid, Trophy } from 'lucide-react';
 import { BrowserRouter, Routes, Route, useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { FinanceiroView } from './components/FinanceiroView';
@@ -21,6 +21,7 @@ import { TenantFinancialDashboard } from './components/TenantFinancialDashboard'
 import { TenantOnboardingCheckout } from './components/TenantOnboardingCheckout';
 import { LawyerDashboard } from './components/LawyerDashboard';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
+import { ProcessoRapidoView, PublicProcessoRapidoPortal } from './components/ProcessoRapidoView';
 import { motion, AnimatePresence } from 'motion/react';
 import { Suspense, lazy } from 'react';
 
@@ -68,6 +69,7 @@ const B2BUploadView = lazy(() => import('./components/B2BUploadView').then(m => 
 const FinanceiroDashboard = lazy(() => import('./components/FinanceiroDashboard').then(m => ({ default: m.FinanceiroDashboard })));
 const AntiSpamConfigView = lazy(() => import('./components/AntiSpamConfigView').then(m => ({ default: m.AntiSpamConfigView })));
 const JurimetricsPitchView = lazy(() => import('./components/JurimetricsPitchView').then(m => ({ default: m.JurimetricsPitchView })));
+const SellerDashboard = lazy(() => import('./components/SellerDashboard'));
 const VitrinePublica = lazy(() => import('./components/VitrinePublica').then(m => ({ default: m.VitrinePublica })));
 const PainelVitrineAfiliado = lazy(() => import('./components/PainelVitrineAfiliado').then(m => ({ default: m.PainelVitrineAfiliado })));
 const GestaoLeadsAdmin = lazy(() => import('./components/GestaoLeadsAdmin').then(m => ({ default: m.GestaoLeadsAdmin })));
@@ -76,6 +78,7 @@ const CheckoutAROnlineView = lazy(() => import('./components/CheckoutAROnlineVie
 const AssinaturaDigitalView = lazy(() => import('./components/AssinaturaDigitalView'));
 const ArOnlineManualView = lazy(() => import('./components/ArOnlineManualView'));
 const AnalistaControlTower = lazy(() => import('./components/AnalistaControlTower').then(m => ({ default: m.AnalistaControlTower })));
+import { ResumoProcessosEnviados } from './components/ResumoProcessosEnviados';
 const PainelRastreioAfiliado = lazy(() => import('./components/PainelRastreioAfiliado').then(m => ({ default: m.PainelRastreioAfiliado })));
 const CreditoInteligenteDashboard = lazy(() => import('./components/CreditoInteligenteDashboard'));
 
@@ -145,6 +148,10 @@ const RoteadorInicial = () => {
   if (profile?.tipo_usuario === 'CONSULTOR' || profile?.tipo_usuario === 'AFILIADO') {
     return <Navigate to={`${slugPrefix}/crm`} replace />;
   }
+
+  if (profile?.tipo_usuario === 'VENDEDOR') {
+    return <Navigate to={`${slugPrefix}/painel/vendedor`} replace />;
+  }
   
   // Para MASTER, DIRETOR, AdminGeral, Procurador, Mediador, etc, vai para o dashboard principal
   return <Navigate to={`${slugPrefix}/painel`} replace />;
@@ -169,10 +176,25 @@ function Sidebar({ collapsed = false, setCollapsed }: { collapsed?: boolean, set
   const isMasterAdmin = profile?.tipo_usuario === 'MasterAdmin' || isMaster;
   const basePath = isCrm ? `${slugPrefix}/consultor` : `${slugPrefix}/painel`;
 
-  let links = [{ path: basePath || '/', label: 'Início', icon: Home }];
+  const isVendedor = profile?.tipo_usuario === 'VENDEDOR';
+  let links = [];
+
+  if (isVendedor) {
+    links = [
+      { path: `${basePath}/vendedor`, label: 'Início', icon: Home },
+      { path: `${basePath}/processo-rapido`, label: 'Processo Rápido ⚡', icon: Zap },
+      { path: `${basePath}/vendedor?tab=leads`, label: 'Leads & Funil', icon: Users },
+      { path: `${basePath}/vendedor?tab=clientes`, label: 'Clientes & Onboarding', icon: Briefcase },
+      { path: `${basePath}/vendedor?tab=contratos`, label: 'Contratos & Docs', icon: FileText },
+      { path: `${basePath}/vendedor?tab=comissao`, label: 'Minhas Comissões', icon: DollarSign },
+      { path: `${basePath}/vendedor?tab=ranking`, label: 'Metas & Ranking', icon: Trophy }
+    ];
+  } else {
+    links = [{ path: basePath || '/', label: 'Início', icon: Home }];
 
   if (!isCrm) {
     links.push({ path: `${basePath}/processos`, label: 'Gestão de Processos', icon: FileText });
+    links.push({ path: `${basePath}/processo-rapido`, label: 'Processo Rápido ⚡', icon: Zap });
     
     links.push({ path: `${basePath}/painel-juridico`, label: 'Jurídico', icon: Briefcase });
 
@@ -275,6 +297,9 @@ function Sidebar({ collapsed = false, setCollapsed }: { collapsed?: boolean, set
   }
 
   if (profile?.tipo_usuario && ['AFILIADO', 'VENDEDOR', 'CLIENTE', 'CONSULTOR'].includes(profile.tipo_usuario)) {
+    if (['AFILIADO', 'CONSULTOR'].includes(profile.tipo_usuario)) {
+      links.push({ path: `${basePath}/processo-rapido`, label: 'Processo Rápido ⚡', icon: Zap });
+    }
     links.push({ path: `${basePath}/rastreio-indicacoes`, label: 'Minhas Indicações', icon: Activity });
     links.push({ path: `${basePath}/vitrine-afiliado`, label: 'Vitrine de Soluções', icon: Store });
   }
@@ -290,6 +315,7 @@ function Sidebar({ collapsed = false, setCollapsed }: { collapsed?: boolean, set
   }
 
   links.push({ path: `${basePath}/credito-inteligente`, label: 'Captação & Crédito', icon: BrainCircuit });
+  }
 
   return (
     <div className={`transition-all duration-300 ease-in-out flex flex-col h-full bg-white/40 backdrop-blur-xl border-r border-white/20 shadow-2xl relative z-10 ${collapsed ? 'w-20' : 'w-full md:w-72'}`}>
@@ -612,6 +638,8 @@ function Dashboard() {
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="credito-inteligente" element={<CreditoInteligenteDashboard />} />
+                  <Route path="processo-rapido" element={<ProcessoRapidoView />} />
+                  <Route path="publico-portal-rapido/:id" element={<PublicProcessoRapidoPortal />} />
                   <Route path="*" element={<ConsultantDashboard />} />
                 </Routes>
               </Suspense>
@@ -764,6 +792,8 @@ function Dashboard() {
                       </Link>
                     </RoleProtectedRoute>
                   </div>
+
+                  <ResumoProcessosEnviados />
                 </div>
                 )
               } />
@@ -819,6 +849,7 @@ function Dashboard() {
               <Route path="torre-controle" element={<RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'MasterAdmin', 'ANALISTA', 'AdminGeral']}><AnalistaControlTower /></RoleProtectedRoute>} />
               <Route path="rastreio-indicacoes" element={<RoleProtectedRoute allowedRoles={['AFILIADO', 'VENDEDOR', 'CLIENTE', 'CONSULTOR']}><PainelRastreioAfiliado /></RoleProtectedRoute>} />
               <Route path="credito-inteligente" element={<CreditoInteligenteDashboard />} />
+              <Route path="vendedor" element={<RoleProtectedRoute allowedRoles={['VENDEDOR', 'MASTER', 'ADMIN']}><SellerDashboard /></RoleProtectedRoute>} />
               
               {/* Rota da Empresa Credora (Cliente B2B) */}
               <Route path="recovery-credor" element={<RoleProtectedRoute allowedRoles={['CREDOR', 'MASTER', 'ADMIN', 'MasterAdmin', 'AdminGeral', 'UNIDADE', 'GestorUnidade']}><GsaRecoveryDashboard /></RoleProtectedRoute>} />
@@ -838,6 +869,10 @@ function Dashboard() {
               <Route path="/admin-preview/landing" element={<LandingPageView />} />
               <Route path="/admin-preview/portal" element={<ClientPortalView />} />
               <Route path="/admin-preview/acompanhar" element={<div className="py-10"><PublicTrackingView /></div>} />
+              
+              {/* Rotas para o Saneamento de Processo Rápido */}
+              <Route path="processo-rapido" element={<ProcessoRapidoView />} />
+              <Route path="publico-portal-rapido/:id" element={<PublicProcessoRapidoPortal />} />
             </Routes>
             </Suspense>
           </div>
