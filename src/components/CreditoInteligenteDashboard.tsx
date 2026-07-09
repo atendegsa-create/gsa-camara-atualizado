@@ -9,7 +9,11 @@ import {
   GraduationCap, QrCode, Calendar, Lock, Trophy
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import { db } from '../lib/firebase';
+import { collection, getDocs, doc, deleteDoc, query, where } from 'firebase/firestore';
 import CreditoSimuladorPremium from './CreditoSimuladorPremium';
+import EntrevistaCreditoView from './EntrevistaCreditoView';
+import ChecklistCreditoPremium from './ChecklistCreditoPremium';
 
 // Interfaces internas para o simulador e módulo de crédito
 interface CreditoLead {
@@ -129,8 +133,15 @@ export default function CreditoInteligenteDashboard() {
   const [showReabModal, setShowReabModal] = useState<CreditoLead | null>(null);
   const [showBridgeModal, setShowBridgeModal] = useState<CreditoLead | null>(null);
   const [showSimuladorModal, setShowSimuladorModal] = useState<boolean>(false);
+  const [showEntrevistaModal, setShowEntrevistaModal] = useState<boolean>(false);
+  const [showChecklistModal, setShowChecklistModal] = useState<boolean>(false);
   const [showNovoParceiroModal, setShowNovoParceiroModal] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [currentLeadId, setCurrentLeadId] = useState<string>('');
+  const [cnpjLookup, setCnpjLookup] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
   
   // Estado do Funil GSA Recovery
   const [purchasedServices, setPurchasedServices] = useState<Record<string, boolean>>({});
@@ -155,148 +166,213 @@ export default function CreditoInteligenteDashboard() {
   const [novoParceiroDetalhes, setNovoParceiroDetalhes] = useState('');
   const [novoParceiroLinha, setNovoParceiroLinha] = useState('');
 
-  // 3. Carregar dados fictícios/Iniciais e localStorage
+  // 3. Carregar dados fictícios/Iniciais e localStorage com sincronização live do Firestore
   useEffect(() => {
-    const savedLeads = localStorage.getItem('gsa_credito_leads');
-    const savedConfig = localStorage.getItem('gsa_credito_config');
-    const savedParceiros = localStorage.getItem('gsa_parceiros_financeiros');
+    const carregarDadosCompletos = async () => {
+      let leadsMesclados: CreditoLead[] = [];
+      const savedLeads = localStorage.getItem('gsa_credito_leads');
+      const savedConfig = localStorage.getItem('gsa_credito_config');
+      const savedParceiros = localStorage.getItem('gsa_parceiros_financeiros');
 
-    if (savedLeads) {
-      setLeads(JSON.parse(savedLeads));
-    } else {
-      // Massa inicial rica para simulação realista
-      const defaultLeads: CreditoLead[] = [
-        {
-          id: 'lead-1',
-          empresa: 'Tecnologia Alpha Ltda',
-          cnpj: '12.345.678/0001-90',
-          adminNome: 'Mariana Medeiros',
-          generoAdmin: 'Mulher',
-          admin_genero: 'Mulher',
-          faturamentoAnual: 1200000,
-          tempoConstituicao: 36,
-          possuiContabilidade: true,
-          temDividasBancarias: false,
-          temDividasImpostos: false,
-          score: 100,
-          limiteEstimado: 720000,
-          tier: 'Tier A',
-          status: 'Aprovado',
-          dataSimulacao: '2026-06-30T10:00:00',
-          afiliadoId: 'user-bronze',
-          comissaoEstimada: 12000,
-          regiao: 'São Paulo - SP'
-        },
-        {
-          id: 'lead-2',
-          empresa: 'Metalúrgica Vulcan',
-          cnpj: '98.765.432/0001-21',
-          adminNome: 'Roberto Souza',
-          generoAdmin: 'Homem',
-          admin_genero: 'Homem',
-          faturamentoAnual: 2400000,
-          tempoConstituicao: 48,
-          possuiContabilidade: true,
-          temDividasBancarias: true,
-          temDividasImpostos: true,
-          score: 30, // 100 - 30 (banco) - 40 (impostos) = 30
-          limiteEstimado: 1200000,
-          tier: 'Tier B',
-          status: 'Limpeza de Nome Ativada',
-          dataSimulacao: '2026-06-30T11:30:00',
-          afiliadoId: 'user-prata',
-          comissaoEstimada: 36000,
-          regiao: 'Curitiba - PR'
-        },
-        {
-          id: 'lead-3',
-          empresa: 'Comércio de Doces do Vale',
-          cnpj: '45.123.789/0001-55',
-          adminNome: 'Claudio Antunes',
-          generoAdmin: 'Homem',
-          admin_genero: 'Homem',
-          faturamentoAnual: 300000,
-          tempoConstituicao: 8, // < 12 meses
-          possuiContabilidade: true,
-          temDividasBancarias: false,
-          temDividasImpostos: false,
-          score: 100,
-          limiteEstimado: 150000,
-          tier: 'Inapto',
-          status: 'Simulado',
-          dataSimulacao: '2026-06-30T14:15:00',
-          afiliadoId: 'user-bronze',
-          comissaoEstimada: 0,
-          regiao: 'Salvador - BA'
-        },
-        {
-          id: 'lead-4',
-          empresa: 'Agropecuária Cerrado Verde',
-          cnpj: '33.999.888/0001-44',
-          adminNome: 'Beatriz Vasconcelos',
-          generoAdmin: 'Mulher',
-          admin_genero: 'Mulher',
-          faturamentoAnual: 4500000,
-          tempoConstituicao: 60,
-          possuiContabilidade: false,
-          temDividasBancarias: true,
-          temDividasImpostos: false,
-          score: 70, // 100 - 30 = 70
-          limiteEstimado: 2700000,
-          tier: 'Tier B',
-          status: 'Documentação Pendente',
-          dataSimulacao: '2026-06-30T16:00:00',
-          afiliadoId: 'user-ouro',
-          comissaoEstimada: 81000,
-          regiao: 'Goiânia - GO'
+      // 1. Carrega massa inicial ou dados salvos no localStorage
+      if (savedLeads) {
+        try {
+          leadsMesclados = JSON.parse(savedLeads);
+        } catch (_) {}
+      } else {
+        const defaultLeads: CreditoLead[] = [
+          {
+            id: 'lead-1',
+            empresa: 'Tecnologia Alpha Ltda',
+            cnpj: '12.345.678/0001-90',
+            adminNome: 'Mariana Medeiros',
+            generoAdmin: 'Mulher',
+            admin_genero: 'Mulher',
+            faturamentoAnual: 1200000,
+            tempoConstituicao: 36,
+            possuiContabilidade: true,
+            temDividasBancarias: false,
+            temDividasImpostos: false,
+            score: 100,
+            limiteEstimado: 720000,
+            tier: 'Tier A',
+            status: 'Aprovado',
+            dataSimulacao: '2026-06-30T10:00:00',
+            afiliadoId: 'user-bronze',
+            comissaoEstimada: 12000,
+            regiao: 'São Paulo - SP'
+          },
+          {
+            id: 'lead-2',
+            empresa: 'Metalúrgica Vulcan',
+            cnpj: '98.765.432/0001-21',
+            adminNome: 'Roberto Souza',
+            generoAdmin: 'Homem',
+            admin_genero: 'Homem',
+            faturamentoAnual: 2400000,
+            tempoConstituicao: 48,
+            possuiContabilidade: true,
+            temDividasBancarias: true,
+            temDividasImpostos: true,
+            score: 30,
+            limiteEstimado: 1200000,
+            tier: 'Tier B',
+            status: 'Limpeza de Nome Ativada',
+            dataSimulacao: '2026-06-30T11:30:00',
+            afiliadoId: 'user-prata',
+            comissaoEstimada: 36000,
+            regiao: 'Curitiba - PR'
+          },
+          {
+            id: 'lead-3',
+            empresa: 'Comércio de Doces do Vale',
+            cnpj: '45.123.789/0001-55',
+            adminNome: 'Claudio Antunes',
+            generoAdmin: 'Homem',
+            admin_genero: 'Homem',
+            faturamentoAnual: 300000,
+            tempoConstituicao: 8,
+            possuiContabilidade: true,
+            temDividasBancarias: false,
+            temDividasImpostos: false,
+            score: 100,
+            limiteEstimado: 150000,
+            tier: 'Inapto',
+            status: 'Simulado',
+            dataSimulacao: '2026-06-30T14:15:00',
+            afiliadoId: 'user-bronze',
+            comissaoEstimada: 0,
+            regiao: 'Salvador - BA'
+          },
+          {
+            id: 'lead-4',
+            empresa: 'Agropecuária Cerrado Verde',
+            cnpj: '33.999.888/0001-44',
+            adminNome: 'Beatriz Vasconcelos',
+            generoAdmin: 'Mulher',
+            admin_genero: 'Mulher',
+            faturamentoAnual: 4500000,
+            tempoConstituicao: 60,
+            possuiContabilidade: false,
+            temDividasBancarias: true,
+            temDividasImpostos: false,
+            score: 70,
+            limiteEstimado: 2700000,
+            tier: 'Tier B',
+            status: 'Documentação Pendente',
+            dataSimulacao: '2026-06-30T16:00:00',
+            afiliadoId: 'user-ouro',
+            comissaoEstimada: 81000,
+            regiao: 'Goiânia - GO'
+          }
+        ];
+        leadsMesclados = defaultLeads;
+      }
+
+      // 2. Tenta carregar os leads reais do Firestore
+      try {
+        let querySnapshot;
+        if (isMaster) {
+          querySnapshot = await getDocs(collection(db, 'leads_credito'));
+        } else if (profile?.id) {
+          const q = query(collection(db, 'leads_credito'), where('afiliadoRef', '==', profile.id));
+          querySnapshot = await getDocs(q);
+        } else {
+          // Sem profile, não carrega leads reais
+          querySnapshot = { forEach: () => {} };
         }
-      ];
-      setLeads(defaultLeads);
-      localStorage.setItem('gsa_credito_leads', JSON.stringify(defaultLeads));
-    }
-
-    if (savedParceiros) {
-      setParceiros(JSON.parse(savedParceiros));
-    } else {
-      const initialParceiros: ParceiroFinanceiro[] = [
-        {
-          id: 'parceiro-1',
-          nome: 'Apex Fundo de Crédito Estruturado',
-          tipo: 'credito_privado',
-          tipo_label: 'FIDC Crédito Privado',
-          detalhes: 'Taxas bridge a partir de 1.8% a.m. focado no mercado corporativo de alta renda.',
-          linha_ativa: 'Bridge',
-          status: 'Homologado',
-          status_color: 'emerald'
-        },
-        {
-          id: 'parceiro-2',
-          nome: 'Conexão Contábil Associados',
-          tipo: 'fintech',
-          tipo_label: 'Contabilidade',
-          detalhes: 'Especialistas em reestruturação fiscal e emissão ágil de CND da Receita.',
-          linha_ativa: 'Receita Federal',
-          status: 'Ativo',
-          status_color: 'emerald'
-        },
-        {
-          id: 'parceiro-3',
-          nome: 'Horizon Securitizadora S/A',
-          tipo: 'fidc',
-          tipo_label: 'FIDC Securitizadora',
-          detalhes: 'Especializada em desconto de duplicatas e crédito privado emergencial.',
-          linha_ativa: 'FIDC PME',
-          status: 'Homologado',
-          status_color: 'emerald'
+        
+        const leadsFirestore: CreditoLead[] = [];
+        
+        if (querySnapshot.forEach) {
+          querySnapshot.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+          
+          // Mapeia do formato Firestore para o formato CreditoLead do Dashboard
+          leadsFirestore.push({
+            id,
+            empresa: data.nomeEmpresa || data.empresa || 'Empresa Sem Nome',
+            cnpj: data.cnpj || '',
+            adminNome: data.nomeAdministrador || data.adminNome || '',
+            generoAdmin: (data.genero || data.generoAdmin || 'Homem') as 'Homem' | 'Mulher',
+            admin_genero: (data.genero || data.generoAdmin || 'Homem') as 'Homem' | 'Mulher',
+            faturamentoAnual: Number(data.faturamentoAnual) || 0,
+            tempoConstituicao: Number(data.tempoCNPJ || data.tempoConstituicao) || 12,
+            possuiContabilidade: data.temContabilidadeAtiva === 'Sim' || !!data.possuiContabilidade,
+            temDividasBancarias: data.temRestricoes === 'Sim' || !!data.temDividasBancarias,
+            temDividasImpostos: data.temDividasImpostos === 'Sim' || !!data.temDividasImpostos,
+            score: data.score || (data.scoreCalculado ? data.scoreCalculado * 10 : 100),
+            limiteEstimado: data.limiteEstimado || 0,
+            tier: data.tier || 'Tier B',
+            status: data.statusInterno === 'Pronto para Análise de Liberação' ? 'Análise Técnica' : (data.statusInterno || data.status || 'Simulado'),
+            dataSimulacao: data.dataCadastro || data.dataSimulacao || new Date().toISOString(),
+            regiao: data.regiao || 'São Paulo - SP',
+            afiliadoId: data.afiliadoRef || 'user-teste',
+            comissaoEstimada: (data.limiteEstimado || 0) * 0.03
+          });
+        });
         }
-      ];
-      setParceiros(initialParceiros);
-      localStorage.setItem('gsa_parceiros_financeiros', JSON.stringify(initialParceiros));
-    }
 
-    if (savedConfig) {
-      setComissaoConfig(JSON.parse(savedConfig));
-    }
+        // Mescla sem duplicar, priorizando Firestore
+        const mapExistente = new Map<string, CreditoLead>();
+        leadsMesclados.forEach(l => mapExistente.set(l.id, l));
+        leadsFirestore.forEach(l => mapExistente.set(l.id, l));
+        
+        leadsMesclados = Array.from(mapExistente.values());
+      } catch (err) {
+        console.error("Erro ao sincronizar CRM com leads do Firestore:", err);
+      }
+
+      setLeads(leadsMesclados);
+      localStorage.setItem('gsa_credito_leads', JSON.stringify(leadsMesclados));
+
+      // 3. Parceiros Financeiros
+      if (savedParceiros) {
+        setParceiros(JSON.parse(savedParceiros));
+      } else {
+        const initialParceiros: ParceiroFinanceiro[] = [
+          {
+            id: 'parceiro-1',
+            nome: 'Apex Fundo de Crédito Estruturado',
+            tipo: 'credito_privado',
+            tipo_label: 'FIDC Crédito Privado',
+            detalhes: 'Taxas bridge a partir de 1.8% a.m. focado no mercado corporativo de alta renda.',
+            linha_ativa: 'Bridge',
+            status: 'Homologado',
+            status_color: 'emerald'
+          },
+          {
+            id: 'parceiro-2',
+            nome: 'Conexão Contábil Associados',
+            tipo: 'fintech',
+            tipo_label: 'Contabilidade',
+            detalhes: 'Especialistas em reestruturação fiscal e emissão ágil de CND da Receita.',
+            linha_ativa: 'Receita Federal',
+            status: 'Ativo',
+            status_color: 'emerald'
+          },
+          {
+            id: 'parceiro-3',
+            nome: 'Horizon Securitizadora S/A',
+            tipo: 'fidc',
+            tipo_label: 'FIDC Securitizadora',
+            detalhes: 'Especializada em desconto de duplicatas e crédito privado emergencial.',
+            linha_ativa: 'FIDC PME',
+            status: 'Homologado',
+            status_color: 'emerald'
+          }
+        ];
+        setParceiros(initialParceiros);
+        localStorage.setItem('gsa_parceiros_financeiros', JSON.stringify(initialParceiros));
+      }
+
+      if (savedConfig) {
+        setComissaoConfig(JSON.parse(savedConfig));
+      }
+    };
+
+    carregarDadosCompletos();
   }, []);
 
   const saveLeadsToStorage = (updated: CreditoLead[]) => {
@@ -468,8 +544,16 @@ export default function CreditoInteligenteDashboard() {
   };
 
   // Excluir Lead
-  const excluirLead = (id: string) => {
+  const excluirLead = async (id: string) => {
     if (confirm('Tem certeza de que deseja remover este lead?')) {
+      try {
+        if (!id.startsWith('lead-')) {
+          const docRef = doc(db, 'leads_credito', id);
+          await deleteDoc(docRef);
+        }
+      } catch (err) {
+        console.error("Erro ao excluir lead do Firestore:", err);
+      }
       const atualizados = leads.filter(l => l.id !== id);
       saveLeadsToStorage(atualizados);
     }
@@ -580,6 +664,52 @@ export default function CreditoInteligenteDashboard() {
     setTimeout(() => setCopiadoId(null), 2000);
   };
 
+  // Motor de Busca Rápida por CNPJ na Entrada do Módulo
+  const verificarCadastroPorCNPJ = async () => {
+    if (!cnpjLookup.trim()) {
+      alert("Por favor, digite um CNPJ.");
+      return;
+    }
+    setLookupLoading(true);
+    try {
+      const q = query(collection(db, 'leads_credito'), where('cnpj', '==', cnpjLookup.trim()));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const docEncontrado = querySnapshot.docs[0];
+        setCurrentLeadId(docEncontrado.id);
+        alert(`✓ Cadastro localizado! Carregando dados de ${docEncontrado.data().nomeEmpresa || docEncontrado.data().empresa}.`);
+      } else {
+        alert("ℹ️ CNPJ não encontrado. O link gerado criará um novo registro do zero.");
+      }
+    } catch (err) {
+      console.error("Erro ao buscar CNPJ:", err);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  // Gerador Inteligente de Links de Prospecção / Resolução
+  const copiarLinkCompartilhamento = (destino: 'ficha' | 'checklist' | 'simulador') => {
+    const baseUrl = window.location.origin;
+    
+    let path = '/';
+    if (destino === 'ficha') path = '/ficha-entrevista';
+    else if (destino === 'checklist') path = '/checklist-credito';
+    else if (destino === 'simulador') path = '/simulador-credito';
+
+    let urlFinal = `${baseUrl}${path}`;
+    
+    // Se já temos um lead ativo, o link vai amarrado para ele resolver pendências
+    if (currentLeadId) {
+      urlFinal += `?leadId=${currentLeadId}`;
+    }
+
+    navigator.clipboard.writeText(urlFinal);
+    setCopiedIndex(destino);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
   // Filtros de busca
   const leadsFiltrados = leads.filter(l => 
     l.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -590,73 +720,162 @@ export default function CreditoInteligenteDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-gray-900 pb-16">
       
-      {/* HEADER DE TÍTULO DA FUNCIONALIDADE */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-[10px] rounded-full uppercase tracking-widest">
-              LegalTech & Fintech
-            </span>
-            <span className="px-3 py-1 bg-green-50 border border-green-100 text-green-600 font-bold text-[10px] rounded-full uppercase tracking-widest flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" /> ATIVO
-            </span>
+      {/* HEADER DE TÍTULO E BOTÕES PREMIUM DE ALTA CONVERSÃO */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm font-sans antialiased">
+        
+        {/* SEÇÃO HEADER */}
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 pb-4 border-b border-slate-100">
+          <div className="space-y-1">
+            <div className="flex gap-2">
+              <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider border border-blue-100">Legaltech & Fintech</span>
+              <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider border border-emerald-100">Ativo</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <BrainCircuit className="text-indigo-600 w-6 h-6 shrink-0" />
+              Captação de Recursos & Crédito Inteligente
+            </h2>
+            <p className="text-xs text-slate-500 max-w-xl font-medium">
+              Sistema integrado de análise de limites, MLM, crédito estruturado privado e reabilitação fiscal/judicial.
+            </p>
           </div>
-          <h1 className="text-3xl font-serif font-black tracking-tight text-gray-900 flex items-center gap-2">
-            <BrainCircuit className="text-indigo-600 w-8 h-8" />
-            Captação de Recursos & Crédito Inteligente
-          </h1>
-          <p className="text-gray-500 font-medium text-sm mt-1">
-            Sistema integrado de análise de limites, MLM, crédito estruturado privado e reabilitação fiscal/judicial.
-          </p>
+
+          {/* INPUT DE VERIFICAÇÃO DE CNPJ DA EMPRESA */}
+          <div className="w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-2 items-center">
+            <div className="w-full sm:w-auto">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1 font-mono">Identificar Empresa</span>
+              <input 
+                type="text" 
+                value={cnpjLookup}
+                onChange={e => setCnpjLookup(e.target.value)}
+                placeholder="Digitar CNPJ para checar..." 
+                className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 w-full sm:w-48"
+              />
+            </div>
+            <button 
+              type="button"
+              disabled={lookupLoading}
+              onClick={verificarCadastroPorCNPJ}
+              className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors mt-auto self-end h-[34px] cursor-pointer"
+            >
+              {lookupLoading ? '...' : '🔍 Validar'}
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={() => setShowSimuladorModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-6 py-3.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-indigo-500/10 cursor-pointer transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" /> Nova Simulação de Crédito
-        </button>
+        {/* BLOCO DE BOTÕES PREMIUM DE ALTA CONVERSÃO */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* BOTÃO 1: FICHA DE ENTREVISTA */}
+          <div className="relative group">
+            <button 
+              type="button"
+              onClick={() => window.location.href = currentLeadId ? `/ficha-entrevista?leadId=${currentLeadId}` : '/ficha-entrevista'}
+              className="w-full bg-[#009B63] hover:bg-[#008451] text-white p-6 rounded-xl flex flex-col items-center justify-center text-center gap-2 h-28 shadow-sm transition-all relative cursor-pointer"
+            >
+              <span className="text-xl">📄</span>
+              <span className="text-sm font-bold tracking-tight">Ficha de Entrevista</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => copiarLinkCompartilhamento('ficha')}
+              className="absolute top-2 right-2 bg-white/20 hover:bg-white/40 text-white text-[10px] px-2 py-1 rounded font-mono transition-all cursor-pointer"
+              title="Copiar link para enviar ao cliente ou contador"
+            >
+              {copiedIndex === 'ficha' ? '✓ Copiado' : '🔗 Compartilhar'}
+            </button>
+          </div>
+
+          {/* BOTÃO 2: CHECKLIST DE DOCUMENTOS */}
+          <div className="relative group">
+            <button 
+              type="button"
+              onClick={() => window.location.href = currentLeadId ? `/checklist-credito?leadId=${currentLeadId}` : '/checklist-credito'}
+              className="w-full bg-[#1A66FF] hover:bg-[#1352D6] text-white p-6 rounded-xl flex flex-col items-center justify-center text-center gap-2 h-28 shadow-sm transition-all relative cursor-pointer"
+            >
+              <span className="text-xl">📋</span>
+              <span className="text-sm font-bold tracking-tight">Checklist de Documentos</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => copiarLinkCompartilhamento('checklist')}
+              className="absolute top-2 right-2 bg-white/20 hover:bg-white/40 text-white text-[10px] px-2 py-1 rounded font-mono transition-all cursor-pointer"
+              title="Copiar link do Checklist Dinâmico"
+            >
+              {copiedIndex === 'checklist' ? '✓ Copiado' : '🔗 Compartilhar'}
+            </button>
+          </div>
+
+          {/* BOTÃO 3: NOVA SIMULAÇÃO DE CRÉDITO */}
+          <div className="relative group">
+            <button 
+              type="button"
+              onClick={() => window.location.href = '/simulador-credito'}
+              className="w-full bg-[#6344F2] hover:bg-[#5034D9] text-white p-6 rounded-xl flex flex-col items-center justify-center text-center gap-2 h-28 shadow-sm transition-all relative cursor-pointer"
+            >
+              <span className="text-xl">＋</span>
+              <span className="text-sm font-bold tracking-tight">Nova Simulação de Crédito</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => copiarLinkCompartilhamento('simulador')}
+              className="absolute top-2 right-2 bg-white/20 hover:bg-white/40 text-white text-[10px] px-2 py-1 rounded font-mono transition-all cursor-pointer"
+              title="Copiar link direto de captação de novos leads"
+            >
+              {copiedIndex === 'simulador' ? '✓ Copiado' : '🔗 Prospectar'}
+            </button>
+          </div>
+
+        </div>
+
+        {currentLeadId && (
+          <div className="text-[11px] font-mono text-slate-500 text-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            🔗 Sessão Ativa Vinculada ao Lead ID: <span className="text-blue-600 font-bold">{currentLeadId}</span>. Os links copiados estão parametrizados para este cliente.
+          </div>
+        )}
+
       </div>
 
       {/* SELETOR DE PERFIL PARA EXPERIÊNCIA DE TESTE MULTINÍVEL */}
-      <div className="bg-slate-950 text-white p-5 rounded-3xl border border-slate-800 shadow-xl">
-        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/10">
-              <ShieldAlert className="w-5 h-5" />
+      {isMaster && (
+        <div className="bg-slate-950 text-white p-5 rounded-3xl border border-slate-800 shadow-xl">
+          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/10">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Matriz de Acessos por Nível Hierárquico (Simulação)</h4>
+                <p className="text-xs text-slate-400">Alterne entre os níveis de perfil para verificar as visões e regras específicas do ecossistema GSA.</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-sm">Matriz de Acessos por Nível Hierárquico (Simulação)</h4>
-              <p className="text-xs text-slate-400">Alterne entre os níveis de perfil para verificar as visões e regras específicas do ecossistema GSA.</p>
+            
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'MASTER', label: '👑 GSA Master', color: 'bg-indigo-600' },
+                { id: 'UNIDADE', label: '🏢 Unidade/Franquia', color: 'bg-emerald-600' },
+                { id: 'RECUPERADORA', label: '⚖️ GSA Soluções (Recuperadora de crédito)', color: 'bg-amber-600' },
+                { id: 'VENDEDOR', label: '💼 Vendedor CRM', color: 'bg-blue-600' },
+                { id: 'AFILIADO', label: '🔗 Afiliado MLM', color: 'bg-rose-600' },
+                { id: 'EMPRESARIO', label: '👤 Empresário', color: 'bg-cyan-600' },
+                { id: 'AGENCIA', label: '🏦 Agência de Crédito', color: 'bg-violet-600' },
+              ].map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setSelectedRole(r.id as any)}
+                  className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                    selectedRole === r.id 
+                      ? `${r.color} text-white shadow-lg` 
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${selectedRole === r.id ? 'bg-white' : 'bg-slate-500'}`} />
+                  {r.label}
+                </button>
+              ))}
             </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'MASTER', label: '👑 GSA Master', color: 'bg-indigo-600' },
-              { id: 'UNIDADE', label: '🏢 Unidade/Franquia', color: 'bg-emerald-600' },
-              { id: 'RECUPERADORA', label: '⚖️ GSA Soluções (Recuperadora de crédito)', color: 'bg-amber-600' },
-              { id: 'VENDEDOR', label: '💼 Vendedor CRM', color: 'bg-blue-600' },
-              { id: 'AFILIADO', label: '🔗 Afiliado MLM', color: 'bg-rose-600' },
-              { id: 'EMPRESARIO', label: '👤 Empresário', color: 'bg-cyan-600' },
-              { id: 'AGENCIA', label: '🏦 Agência de Crédito', color: 'bg-violet-600' },
-            ].map(r => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedRole(r.id as any)}
-                className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  selectedRole === r.id 
-                    ? `${r.color} text-white shadow-lg` 
-                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${selectedRole === r.id ? 'bg-white' : 'bg-slate-500'}`} />
-                {r.label}
-              </button>
-            ))}
           </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================= */}
       {/* 1. VISÃO ADMIN MASTER                                    */}
@@ -2987,6 +3206,20 @@ $$ LANGUAGE plpgsql;`}
                         <Zap className="w-3.5 h-3.5" />
                       </button>
                       <button
+                        onClick={() => {
+                          setCurrentLeadId(lead.id);
+                          alert(`✓ Sessão ativa vinculada à empresa: ${lead.empresa}!`);
+                        }}
+                        title="Vincular à Sessão Ativa (Para compartilhamento de Ficha/Checklist)"
+                        className={`p-1.5 rounded-lg cursor-pointer inline-block transition-colors ${
+                          currentLeadId === lead.id 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => excluirLead(lead.id)}
                         className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer inline-block"
                       >
@@ -3008,6 +3241,24 @@ $$ LANGUAGE plpgsql;`}
       {showSimuladorModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[10000] animate-fade-in overflow-y-auto">
           <CreditoSimuladorPremium onClose={() => setShowSimuladorModal(false)} />
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL / FICHA DE ENTREVISTA DE CRÉDITO                   */}
+      {/* ========================================================= */}
+      {showEntrevistaModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[10000] overflow-y-auto">
+          <EntrevistaCreditoView onClose={() => setShowEntrevistaModal(false)} />
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL / CHECKLIST DE DOCUMENTOS PREMIUM                  */}
+      {/* ========================================================= */}
+      {showChecklistModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[10000] overflow-y-auto">
+          <ChecklistCreditoPremium onClose={() => setShowChecklistModal(false)} />
         </div>
       )}
 

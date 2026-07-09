@@ -139,12 +139,71 @@
         "statusInterno": { "type": "string" }
       },
       "required": ["nomeEmpresa", "cnpj", "nomeAdministrador", "email"]
+    },
+    "FichaEntrevistaCredito": {
+      "title": "FichaEntrevistaCredito",
+      "description": "Fichas de entrevista e cadastro operacional de crédito corporativo.",
+      "type": "object",
+      "properties": {
+        "razaoSocial": { "type": "string" },
+        "nomeFantasia": { "type": "string" },
+        "cnpj": { "type": "string" },
+        "dataFundacao": { "type": "string" },
+        "atividadePrincipal": { "type": "string" },
+        "telefoneFixo": { "type": "string" },
+        "telefoneCelular": { "type": "string" },
+        "emailEmpresa": { "type": "string" },
+        "contatoResponsavel": { "type": "string" },
+        "tipoOperacao": { "type": "string" },
+        "finalidadeRecurso": { "type": "string" },
+        "socio1": { "type": "object" },
+        "socio2": { "type": "object" },
+        "socio3": { "type": "object" },
+        "condicaoSede": { "type": "string" },
+        "valorAluguel": { "type": "string" },
+        "eFranquia": { "type": "string" },
+        "franqueador": { "type": "string" },
+        "qtdFuncionarios": { "type": "string" },
+        "despesasPessoal": { "type": "string" },
+        "faturamentoMedioMensal": { "type": "string" },
+        "possuiGarantia": { "type": "string" },
+        "descricaoGarantia": { "type": "string" },
+        "observacoes": { "type": "string" },
+        "declaracaoNome": { "type": "string" },
+        "declaracaoCpf": { "type": "string" },
+        "dataEntrevista": { "type": "string", "format": "date-time" },
+        "statusFicha": { "type": "string" }
+      },
+      "required": ["razaoSocial", "cnpj", "telefoneCelular", "emailEmpresa", "finalidadeRecurso", "declaracaoNome", "declaracaoCpf"]
+    },
+    "LogCompartilhamentoChecklist": {
+      "title": "LogCompartilhamentoChecklist",
+      "description": "Logs de compartilhamento de checklist de documentos para auditoria de crédito.",
+      "type": "object",
+      "properties": {
+        "emailDestinatario": { "type": "string" },
+        "regimeConfigurado": { "type": "string" },
+        "precisaAberturaConta": { "type": "string" },
+        "precisaGarantiaReal": { "type": "string" },
+        "afiliadoRef": { "type": "string" },
+        "parceiroRef": { "type": "string" },
+        "dataEnvio": { "type": "string", "format": "date-time" }
+      },
+      "required": ["emailDestinatario", "regimeConfigurado", "dataEnvio"]
     }
   },
   "firestore": {
     "/leads_credito/{leadId}": {
       "schema": "LeadCredito",
       "description": "Coleção de leads de crédito premium."
+    },
+    "/fichas_entrevista_credito/{fichaId}": {
+      "schema": "FichaEntrevistaCredito",
+      "description": "Fichas de entrevista para análise e mitigação de riscos de crédito."
+    },
+    "/logs_compartilhamento_checklist/{logId}": {
+      "schema": "LogCompartilhamentoChecklist",
+      "description": "Logs de compartilhamento de checklist."
     },
     "/usuarios/{userId}": {
       "schema": "User",

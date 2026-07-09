@@ -195,6 +195,31 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    match /fichas_entrevista_credito/{fichaId} {
+      allow read: if isMaster() || isAnalista() || (isAuthenticated() && (
+        resource.data.get('afiliadoRef', null) == request.auth.uid ||
+        resource.data.get('parceiroRef', null) == request.auth.uid ||
+        resource.data.get('declaracaoCpf', null) == request.auth.uid
+      ));
+      allow create: if true; // Public or authenticated creation of the interview sheet
+      allow update: if isMaster() || (isAuthenticated() && (
+        resource.data.get('afiliadoRef', null) == request.auth.uid ||
+        resource.data.get('parceiroRef', null) == request.auth.uid ||
+        resource.data.get('declaracaoCpf', null) == request.auth.uid
+      ));
+      allow delete: if isMaster();
+    }
+
+    match /logs_compartilhamento_checklist/{logId} {
+      allow read: if isMaster() || isAnalista() || (isAuthenticated() && (
+        resource.data.get('afiliadoRef', null) == request.auth.uid ||
+        resource.data.get('parceiroRef', null) == request.auth.uid
+      ));
+      allow create: if true; // Publicly writable during share trigger
+      allow update: if isMaster();
+      allow delete: if isMaster();
+    }
+
     // 5. CLIENTES
     match /clientes/{clientId} {
       allow read: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null)));

@@ -83,8 +83,64 @@ import { ResumoProcessosEnviados } from './components/ResumoProcessosEnviados';
 const PainelRastreioAfiliado = lazy(() => import('./components/PainelRastreioAfiliado').then(m => ({ default: m.PainelRastreioAfiliado })));
 const CreditoInteligenteDashboard = lazy(() => import('./components/CreditoInteligenteDashboard'));
 const CreditoSimuladorPremium = lazy(() => import('./components/CreditoSimuladorPremium'));
+const EntrevistaCreditoView = lazy(() => import('./components/EntrevistaCreditoView'));
+const ChecklistCreditoPremium = lazy(() => import('./components/ChecklistCreditoPremium'));
 
 import PublicMediationRequest from './components/PublicMediationRequest';
+
+// FUNÇÃO CENTRALIZADORA DE CHECAGEM DE STATUS E PENDÊNCIAS
+export interface ChecagemStatusResult {
+  completo: boolean;
+  statusGeral: 'Pronto para Análise de Liberação' | 'Pendente de Informações';
+  fichaPendentes: string[];
+  checklistPendentes: string[];
+}
+
+export const checarStatusGeralLead = (dadosLead: any): ChecagemStatusResult => {
+  const camposObrigatorios = ['razaoSocial', 'cnpj', 'faturamentoMedioMensal', 'finalidadeRecurso', 'telefoneCelular', 'emailEmpresa', 'declaracaoNome', 'declaracaoCpf'];
+  
+  const dadosFicha = dadosLead?.dadosFicha || {};
+  const fichaPendentes: string[] = [];
+
+  const nomeCamposMap: Record<string, string> = {
+    razaoSocial: 'Razão Social',
+    cnpj: 'CNPJ Corporativo',
+    faturamentoMedioMensal: 'Faturamento Médio Mensal',
+    finalidadeRecurso: 'Finalidade do Recurso',
+    telefoneCelular: 'Telefone Celular',
+    emailEmpresa: 'E-mail da Empresa',
+    declaracaoNome: 'Nome na Declaração',
+    declaracaoCpf: 'CPF na Declaração'
+  };
+
+  camposObrigatorios.forEach(campo => {
+    if (!dadosFicha[campo] || String(dadosFicha[campo]).trim() === '') {
+      fichaPendentes.push(nomeCamposMap[campo] || campo);
+    }
+  });
+
+  const documentosAnexados = dadosLead?.documentosAnexados || [];
+  const checklistPendentes: string[] = [];
+
+  if (documentosAnexados.length === 0) {
+    checklistPendentes.push('Documentos dos Sócios', 'Documentos da Empresa', 'Comprovante de Faturamento');
+  } else {
+    documentosAnexados.forEach((doc: any) => {
+      if (doc.status === 'Pendente') {
+        checklistPendentes.push(doc.nome);
+      }
+    });
+  }
+
+  const completo = fichaPendentes.length === 0 && checklistPendentes.length === 0;
+
+  return {
+    completo,
+    statusGeral: completo ? 'Pronto para Análise de Liberação' : 'Pendente de Informações',
+    fichaPendentes,
+    checklistPendentes
+  };
+};
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa]">
@@ -1078,7 +1134,10 @@ function AppContent() {
     '/solucoes',
     '/checkout-assinatura',
     '/checkout-ar',
-    '/simulador-credito'
+    '/simulador-credito',
+    '/ficha-entrevista',
+    '/checklist-credito',
+    '/checklist-compartilhado'
   ];
 
   // Identifica se estamos em uma rota de slug
@@ -1089,7 +1148,7 @@ function AppContent() {
     'unidades', 'landing', 'site-comercial', 'analise-online', 'notificacao-digital', 
     'quiz-rx-inss', 'rx-inss-sucesso', 'limpa-nome', 'acesso-cliente', 'ar-online', 
     'acompanhar', 'master', 'processos', 'documentos', 'auditoria', 'parceiros', 'requerimento', 'publico', 'quiz-limpa-nome', 'para-empresas',
-    'juridico', 'solucoes', 'checkout-assinatura', 'checkout-ar', 'simulador-credito'
+    'juridico', 'solucoes', 'checkout-assinatura', 'checkout-ar', 'simulador-credito', 'ficha-entrevista', 'checklist-credito', 'checklist-compartilhado'
   ];
   const isSlugPath = firstPart && !systemPaths.includes(firstPart) && firstPart.length > 2;
   const slugPrefix = isSlugPath ? `/${firstPart}` : '';
@@ -1187,6 +1246,12 @@ function AppContent() {
           <Route path={`${slugPrefix}/analise-online`} element={<OnlineAnalysisApp />} />
           <Route path="/simulador-credito" element={<CreditoSimuladorPremium />} />
           <Route path={`${slugPrefix}/simulador-credito`} element={<CreditoSimuladorPremium />} />
+          <Route path="/ficha-entrevista" element={<EntrevistaCreditoView />} />
+          <Route path={`${slugPrefix}/ficha-entrevista`} element={<EntrevistaCreditoView />} />
+          <Route path="/checklist-credito" element={<ChecklistCreditoPremium />} />
+          <Route path={`${slugPrefix}/checklist-credito`} element={<ChecklistCreditoPremium />} />
+          <Route path="/checklist-compartilhado" element={<ChecklistCreditoPremium />} />
+          <Route path={`${slugPrefix}/checklist-compartilhado`} element={<ChecklistCreditoPremium />} />
           <Route path="/notificacao-digital" element={<LandingPageAR />} />
           <Route path={`${slugPrefix}/notificacao-digital`} element={<LandingPageAR />} />
           <Route path="/checkout-ar" element={<CheckoutAROnlineView />} />

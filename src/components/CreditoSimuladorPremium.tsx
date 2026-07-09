@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { X } from 'lucide-react';
+import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { X, CheckCircle, FileText, ClipboardList } from 'lucide-react';
 
-export default function CreditoSimuladorPremium({ onClose }: { onClose?: () => void }) {
+export default function CreditoSimuladorPremium({ onClose, leadIdProp }: { onClose?: () => void; leadIdProp?: string }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [calculatedScore, setCalculatedScore] = useState(100);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [fichaStatusGeral, setFichaStatusGeral] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     nomeEmpresa: '',
@@ -24,6 +26,53 @@ export default function CreditoSimuladorPremium({ onClose }: { onClose?: () => v
     temBensGarantia: 'Não',
     urgenciaResolucao: 'Imediata'
   });
+
+  const params = new URLSearchParams(window.location.search);
+  const leadId = leadIdProp || params.get('leadId') || '';
+
+  useEffect(() => {
+    if (!leadId) return;
+    setIsEditMode(true);
+
+    const loadLead = async () => {
+      try {
+        const docRef = doc(db, 'leads_credito', leadId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setFormData({
+            nomeEmpresa: data.nomeEmpresa || data.nomeEmpresa || '',
+            cnpj: data.cnpj || '',
+            nomeAdministrador: data.nomeAdministrador || '',
+            cpfSocio: data.cpfSocio || '',
+            whatsapp: data.whatsapp || '',
+            email: data.email || '',
+            genero: data.genero || 'Homem',
+            faturamentoAnual: String(data.faturamentoAnual || ''),
+            tempoCNPJ: String(data.tempoCNPJ || data.tempoConstituicao || ''),
+            temRestricoes: data.temRestricoes || 'Não',
+            temDividasImpostos: data.temDividasImpostos || 'Não',
+            temContabilidadeAtiva: data.temContabilidadeAtiva || 'Sim',
+            temBensGarantia: data.temBensGarantia || 'Não',
+            urgenciaResolucao: data.urgenciaResolucao || 'Imediata'
+          });
+          if (data.scoreCalculado) {
+            setCalculatedScore(data.scoreCalculado);
+          } else if (data.score) {
+            setCalculatedScore(Math.round(data.score / 10));
+          }
+
+          // Verificar pendências e status geral
+          const { checarStatusGeralLead } = await import('../App');
+          const result = checarStatusGeralLead(data);
+          setFichaStatusGeral(result);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar fomento para o simulador:", err);
+      }
+    };
+    loadLead();
+  }, [leadId]);
 
   const executarCalculoScore = () => {
     let baseScore = 100;
@@ -57,7 +106,7 @@ export default function CreditoSimuladorPremium({ onClose }: { onClose?: () => v
       const limiteEstimado = faturamentoNum * coef;
       const tier = finalScore >= 700 ? 'Tier A' : finalScore >= 400 ? 'Tier B' : 'Tier C';
 
-      const payloadFirestore = {
+      const payloadFirestore: any = {
         ...formData,
         scoreCalculado: scoreFinal, // 100-scale
         score: finalScore, // 1000-scale
@@ -67,37 +116,88 @@ export default function CreditoSimuladorPremium({ onClose }: { onClose?: () => v
         parceiroRef: parceiroId,
         utms,
         dataCadastro: new Date().toISOString(),
-        statusInterno: 'Aguardando Reunião'
+        statusInterno: isEditMode ? 'Análise Técnica' : 'Aguardando Reunião'
       };
 
-      // 1. Grava no Firestore com as regras de permissão corrigidas e mapeadas
-      await addDoc(collection(db, 'leads_credito'), payloadFirestore);
+      let activeLeadId = leadId;
 
-      // 2. Alimenta o simulador local/CRM do dashboard
-      const novoLeadLocal = {
-        id: 'lead-' + Date.now(),
-        empresa: formData.nomeEmpresa,
-        cnpj: formData.cnpj,
-        adminNome: formData.nomeAdministrador,
-        generoAdmin: formData.genero as 'Homem' | 'Mulher',
-        admin_genero: formData.genero as 'Homem' | 'Mulher',
-        faturamentoAnual: faturamentoNum,
-        tempoConstituicao: tempoCNPJNum,
-        possuiContabilidade: formData.temContabilidadeAtiva === 'Sim',
-        temDividasBancarias: formData.temRestricoes === 'Sim',
-        temDividasImpostos: formData.temDividasImpostos === 'Sim',
-        score: finalScore,
-        limiteEstimado,
-        tier,
-        status: (tier === 'Tier B' ? 'Documentação Pendente' : 'Simulado'),
-        dataSimulacao: new Date().toISOString(),
-        regiao: 'São Paulo - SP',
-        afiliadoId: refId || 'user-teste',
-        comissaoEstimada: limiteEstimado * 0.03
-      };
+      if (isEditMode && leadId) {
+        const docRef = doc(db, 'leads_credito', leadId);
+        const docSnap = await getDoc(docRef);
+        const existingData = docSnap.exists() ? docSnap.data() : {};
+        
+        const mergedLead = {
+          ...existingData,
+          ...payloadFirestore,
+          dadosFicha: existingData.dadosFicha || null,
+          documentosAnexados: existingData.documentosAnexados || []
+        };
 
-      const localLeads = JSON.parse(localStorage.getItem('gsa_credito_leads') || '[]');
-      localStorage.setItem('gsa_credito_leads', JSON.stringify([novoLeadLocal, ...localLeads]));
+        const { checarStatusGeralLead } = await import('../App');
+        const checagem = checarStatusGeralLead(mergedLead);
+        payloadFirestore.statusInterno = checagem.statusGeral;
+        setFichaStatusGeral(checagem);
+
+        await updateDoc(docRef, payloadFirestore);
+
+        // Alimenta local
+        const localLeads = JSON.parse(localStorage.getItem('gsa_credito_leads') || '[]');
+        const updatedLocalLeads = localLeads.map((l: any) => {
+          if (l.id === leadId) {
+            return {
+              ...l,
+              empresa: formData.nomeEmpresa,
+              cnpj: formData.cnpj,
+              adminNome: formData.nomeAdministrador,
+              faturamentoAnual: faturamentoNum,
+              score: finalScore,
+              limiteEstimado,
+              tier,
+              status: checagem.statusGeral === 'Pronto para Análise de Liberação' ? 'Análise Técnica' : 'Documentação Pendente'
+            };
+          }
+          return l;
+        });
+        localStorage.setItem('gsa_credito_leads', JSON.stringify(updatedLocalLeads));
+      } else {
+        // 1. Grava no Firestore com as regras de permissão corrigidas e mapeadas
+        const docRef = await addDoc(collection(db, 'leads_credito'), payloadFirestore);
+        activeLeadId = docRef.id;
+
+        // 2. Alimenta o simulador local/CRM do dashboard
+        const novoLeadLocal = {
+          id: docRef.id,
+          empresa: formData.nomeEmpresa,
+          cnpj: formData.cnpj,
+          adminNome: formData.nomeAdministrador,
+          generoAdmin: formData.genero as 'Homem' | 'Mulher',
+          admin_genero: formData.genero as 'Homem' | 'Mulher',
+          faturamentoAnual: faturamentoNum,
+          tempoConstituicao: tempoCNPJNum,
+          possuiContabilidade: formData.temContabilidadeAtiva === 'Sim',
+          temDividasBancarias: formData.temRestricoes === 'Sim',
+          temDividasImpostos: formData.temDividasImpostos === 'Sim',
+          score: finalScore,
+          limiteEstimado,
+          tier,
+          status: (tier === 'Tier B' ? 'Documentação Pendente' : 'Simulado'),
+          dataSimulacao: new Date().toISOString(),
+          regiao: 'São Paulo - SP',
+          afiliadoId: refId || 'user-teste',
+          comissaoEstimada: limiteEstimado * 0.03
+        };
+
+        const localLeads = JSON.parse(localStorage.getItem('gsa_credito_leads') || '[]');
+        localStorage.setItem('gsa_credito_leads', JSON.stringify([novoLeadLocal, ...localLeads]));
+
+        // Inicializa o status de pendências do novo lead
+        const { checarStatusGeralLead } = await import('../App');
+        setFichaStatusGeral(checarStatusGeralLead(novoLeadLocal));
+      }
+
+      // Adiciona o leadId na URL de forma transparente para guiar os cliques de checklist/ficha
+      const newUrl = `${window.location.pathname}?leadId=${activeLeadId}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
 
       setStep(2);
     } catch (err) {
@@ -320,6 +420,92 @@ export default function CreditoSimuladorPremium({ onClose }: { onClose?: () => v
               ))}
             </div>
           </div>
+
+          {/* PAINEL DE CONTROLE DE PENDÊNCIAS (VISÃO UNIFICADA) */}
+          {fichaStatusGeral && leadId && (
+            <div className="bg-slate-50 p-6 sm:p-8 rounded-xl border border-slate-200 text-left space-y-4">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">📋 Status do Processo de Crédito</h3>
+              </div>
+              
+              {fichaStatusGeral.completo ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center gap-2 font-medium">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    Parabéns! Todos os requisitos da Ficha de Entrevista e os documentos obrigatórios estão preenchidos e anexados. Seu processo foi enquadrado como <strong>Pronto para Análise de Liberação</strong>.
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-start gap-2 leading-relaxed">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <div>
+                      Seu processo possui o status <strong>Pendente de Informações</strong>. Para liberar o seu perfil técnico e iniciar o comitê de taxas, complete as etapas abaixo:
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Pendências de Ficha */}
+                    <div className="p-4 bg-white border border-slate-200 rounded-lg space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ficha de Entrevista</span>
+                      {fichaStatusGeral.fichaPendentes.length === 0 ? (
+                        <div className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+                          ✓ Ficha preenchida com sucesso!
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] text-slate-500 font-normal">Faltam preencher os seguintes campos obrigatórios:</p>
+                          <ul className="list-disc list-inside text-[11px] text-rose-600 font-medium pl-1 space-y-0.5">
+                            {fichaStatusGeral.fichaPendentes.map((f: string) => (
+                              <li key={f}>{f}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pendências de Checklist */}
+                    <div className="p-4 bg-white border border-slate-200 rounded-lg space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checklist de Documentos</span>
+                      {fichaStatusGeral.checklistPendentes.length === 0 ? (
+                        <div className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+                          ✓ Todos os documentos foram anexados!
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] text-slate-500 font-normal">Faltam anexar os seguintes documentos:</p>
+                          <ul className="list-disc list-inside text-[11px] text-rose-600 font-medium pl-1 space-y-0.5">
+                            {fichaStatusGeral.checklistPendentes.map((c: string) => (
+                              <li key={c}>{c}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões para acessar Ficha e Checklist */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => window.open(`/ficha-entrevista?leadId=${leadId}`, '_blank')}
+                  className="flex-1 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs px-4 py-3 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  📝 Preencher Ficha de Entrevista
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open(`/checklist-credito?leadId=${leadId}`, '_blank')}
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs px-4 py-3 rounded-xl border border-blue-100 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  📂 Ir para Central de Documentos
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* AGENDAMENTO EXECUTIVO DE ALTA CONVERSÃO */}
           <div className="bg-slate-50 p-6 sm:p-8 rounded-xl border border-slate-200 text-center space-y-4">
