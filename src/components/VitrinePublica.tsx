@@ -71,7 +71,7 @@ export const VitrinePublica: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
+    const ref = params.get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref');
     if (ref) {
       setAfiliadoRef(ref);
       

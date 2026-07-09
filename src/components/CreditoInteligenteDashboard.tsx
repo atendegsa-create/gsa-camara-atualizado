@@ -9,6 +9,7 @@ import {
   GraduationCap, QrCode, Calendar, Lock, Trophy
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import CreditoSimuladorPremium from './CreditoSimuladorPremium';
 
 // Interfaces internas para o simulador e módulo de crédito
 interface CreditoLead {
@@ -3005,144 +3006,8 @@ $$ LANGUAGE plpgsql;`}
       {/* MODAL / SIMULADOR DE CRÉDITO INTERATIVO                  */}
       {/* ========================================================= */}
       {showSimuladorModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[10000] animate-fade-in">
-          <motion.div 
-            initial={{ scale: 0.95, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }} 
-            className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
-          >
-            <button 
-              onClick={() => setShowSimuladorModal(false)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 cursor-pointer"
-            >
-              <XCircle className="w-6 h-6" />
-            </button>
-
-            <div className="flex items-center gap-2 mb-6">
-              <BrainCircuit className="text-indigo-600 w-6 h-6" />
-              <h3 className="font-serif font-black text-xl text-gray-900">Simulador de Limite de Crédito</h3>
-            </div>
-
-            <form onSubmit={handleNovaSimulacao} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-600 block">Nome da Empresa *</label>
-                <input 
-                  type="text" required placeholder="Ex: Alpha Tec Ltda"
-                  value={simEmpresa} onChange={(e) => setSimEmpresa(e.target.value)}
-                  className="w-full border border-gray-200 text-xs px-3 py-2.5 rounded-xl outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">CNPJ *</label>
-                  <input 
-                    type="text" required placeholder="Ex: 00.000.000/0001-00"
-                    value={simCnpj} onChange={(e) => setSimCnpj(e.target.value)}
-                    className="w-full border border-gray-200 text-xs px-3 py-2.5 rounded-xl outline-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">Nome do Administrador *</label>
-                  <input 
-                    type="text" required placeholder="Ex: Roberto Silva"
-                    value={simAdminNome} onChange={(e) => setSimAdminNome(e.target.value)}
-                    className="w-full border border-gray-200 text-xs px-3 py-2.5 rounded-xl outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">Gênero do Administrador (Ancoragem) *</label>
-                  <div className="flex gap-2">
-                    {['Mulher', 'Homem'].map(g => (
-                      <button
-                        key={g} type="button"
-                        onClick={() => setSimGenero(g as any)}
-                        className={`flex-1 text-xs font-bold py-2 px-3 rounded-xl border transition-colors cursor-pointer ${
-                          simGenero === g 
-                            ? 'bg-indigo-600 text-white border-indigo-600' 
-                            : 'border-gray-200 text-gray-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        {g} {g === 'Mulher' ? '(Coeficiente 0.60)' : '(Coeficiente 0.50)'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">Faturamento Anual (R$) *</label>
-                  <input 
-                    type="number" required placeholder="Ex: 1200000"
-                    value={simFaturamento} onChange={(e) => setSimFaturamento(Number(e.target.value))}
-                    className="w-full border border-gray-200 text-xs px-3 py-2.5 rounded-xl outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">Tempo de Constituição (Meses) *</label>
-                  <input 
-                    type="number" required placeholder="Ex: 24"
-                    value={simTempo} onChange={(e) => setSimTempo(Number(e.target.value))}
-                    className="w-full border border-gray-200 text-xs px-3 py-2.5 rounded-xl outline-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600 block">Contabilidade Homologada?</label>
-                  <div className="flex gap-2">
-                    {[true, false].map(v => (
-                      <button
-                        key={v ? 'sim' : 'nao'} type="button"
-                        onClick={() => setSimContabilidade(v)}
-                        className={`flex-1 text-xs font-bold py-2 px-3 rounded-xl border transition-colors cursor-pointer ${
-                          simContabilidade === v 
-                            ? 'bg-indigo-600 text-white border-indigo-600' 
-                            : 'border-gray-200 text-gray-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        {v ? 'Sim' : 'Não'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-50 border border-gray-100 rounded-2xl space-y-3">
-                <p className="font-bold text-[10px] text-slate-500 uppercase tracking-widest">Análise de Restrições Empresariais (Filtros de Score)</p>
-                
-                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input 
-                    type="checkbox" checked={simDividasBancarias} 
-                    onChange={(e) => setSimDividasBancarias(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span>Dívidas Bancárias ou Restrição Comercial (Subtrai 30 pontos)</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input 
-                    type="checkbox" checked={simDividasImpostos} 
-                    onChange={(e) => setSimDividasImpostos(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span>Dívidas de Impostos / Receita Federal sem CND (Subtrai 40 pontos)</span>
-                </label>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3.5 rounded-xl cursor-pointer shadow-lg shadow-indigo-500/10 transition-all text-center block"
-              >
-                Gerar Limite & Registrar Lead
-              </button>
-            </form>
-          </motion.div>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[10000] animate-fade-in overflow-y-auto">
+          <CreditoSimuladorPremium onClose={() => setShowSimuladorModal(false)} />
         </div>
       )}
 

@@ -24,6 +24,7 @@ import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ProcessoRapidoView, PublicProcessoRapidoPortal } from './components/ProcessoRapidoView';
 import { motion, AnimatePresence } from 'motion/react';
 import { Suspense, lazy } from 'react';
+import { useUTMTracking } from './hooks/useUTMTracking';
 
 // Lazy load heavy views
 const LandingPageView = lazy(() => import('./components/LandingPageView').then(m => ({ default: m.LandingPageView })));
@@ -81,6 +82,7 @@ const AnalistaControlTower = lazy(() => import('./components/AnalistaControlTowe
 import { ResumoProcessosEnviados } from './components/ResumoProcessosEnviados';
 const PainelRastreioAfiliado = lazy(() => import('./components/PainelRastreioAfiliado').then(m => ({ default: m.PainelRastreioAfiliado })));
 const CreditoInteligenteDashboard = lazy(() => import('./components/CreditoInteligenteDashboard'));
+const CreditoSimuladorPremium = lazy(() => import('./components/CreditoSimuladorPremium'));
 
 import PublicMediationRequest from './components/PublicMediationRequest';
 
@@ -927,6 +929,9 @@ function AppContent() {
   const { user, profile, loading, isAdmin, isMaster } = useAuth();
   const location = useLocation();
 
+  // Executa o rastreamento global de parâmetros UTM e indicadores de afiliados/parceiros
+  useUTMTracking();
+
   // Aplica o tema White-Label baseado na unidade credenciada do usuário
   useTenantTheme();
 
@@ -1072,7 +1077,8 @@ function AppContent() {
     '/juridico/advogado',
     '/solucoes',
     '/checkout-assinatura',
-    '/checkout-ar'
+    '/checkout-ar',
+    '/simulador-credito'
   ];
 
   // Identifica se estamos em uma rota de slug
@@ -1083,14 +1089,15 @@ function AppContent() {
     'unidades', 'landing', 'site-comercial', 'analise-online', 'notificacao-digital', 
     'quiz-rx-inss', 'rx-inss-sucesso', 'limpa-nome', 'acesso-cliente', 'ar-online', 
     'acompanhar', 'master', 'processos', 'documentos', 'auditoria', 'parceiros', 'requerimento', 'publico', 'quiz-limpa-nome', 'para-empresas',
-    'juridico', 'solucoes', 'checkout-assinatura', 'checkout-ar'
+    'juridico', 'solucoes', 'checkout-assinatura', 'checkout-ar', 'simulador-credito'
   ];
   const isSlugPath = firstPart && !systemPaths.includes(firstPart) && firstPart.length > 2;
   const slugPrefix = isSlugPath ? `/${firstPart}` : '';
 
-  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path)) || 
+  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path) || (slugPrefix && location.pathname.startsWith(`${slugPrefix}${path}`))) || 
                       (location.pathname === '/' && !user) || (isSlugPath && pathParts.length === 1) ||
-                      location.pathname.startsWith('/parceiros') || location.pathname.startsWith('/para-empresas');
+                      location.pathname.startsWith('/parceiros') || location.pathname.startsWith('/para-empresas') ||
+                      (slugPrefix && (location.pathname.startsWith(`${slugPrefix}/parceiros`) || location.pathname.startsWith(`${slugPrefix}/para-empresas`)));
 
   if (loading && !isPublicPath) {
     return (
@@ -1178,6 +1185,8 @@ function AppContent() {
           <Route path={`${slugPrefix}/juridico/advogado/:id`} element={<LawyerProcessPage />} />
           <Route path={`${slugPrefix}/site-comercial`} element={<ComercialSiteView />} />
           <Route path={`${slugPrefix}/analise-online`} element={<OnlineAnalysisApp />} />
+          <Route path="/simulador-credito" element={<CreditoSimuladorPremium />} />
+          <Route path={`${slugPrefix}/simulador-credito`} element={<CreditoSimuladorPremium />} />
           <Route path="/notificacao-digital" element={<LandingPageAR />} />
           <Route path={`${slugPrefix}/notificacao-digital`} element={<LandingPageAR />} />
           <Route path="/checkout-ar" element={<CheckoutAROnlineView />} />

@@ -1975,7 +1975,7 @@ export function PublicProcessoRapidoPortal() {
       attachments: [],
       signatures: initialSignatures,
       status: percentage === 100 ? 'PRONTO_PARA_AUDITORIA' : 'PENDENTE',
-      referrerId: searchParams.get('ref') || 'self_registered',
+      referrerId: searchParams.get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref') || 'self_registered',
       referrerName: 'Auto Cadastro',
       referrerType: 'CLIENTE',
       unitId: 'GSA_MATRIZ',

@@ -9,7 +9,7 @@ import { Lock, Mail, User } from 'lucide-react';
 export default function LeadLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const consultorRefId = searchParams.get('ref');
+  const consultorRefId = searchParams.get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref');
   
   // 1. O nosso hook mágico que já sabe qual é a unidade com base no URL
   const { resolvedTenant, loadingTenant } = useTenantResolver();

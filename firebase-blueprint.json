@@ -109,9 +109,43 @@
         }
       },
       "required": ["nomeAcao"]
+    },
+    "LeadCredito": {
+      "title": "LeadCredito",
+      "description": "Leads do Simulador de Viabilidade de Crédito Premium.",
+      "type": "object",
+      "properties": {
+        "nomeEmpresa": { "type": "string" },
+        "cnpj": { "type": "string" },
+        "nomeAdministrador": { "type": "string" },
+        "cpfSocio": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "genero": { "type": "string" },
+        "faturamentoAnual": { "type": "string" },
+        "tempoCNPJ": { "type": "string" },
+        "temRestricoes": { "type": "string" },
+        "temDividasImpostos": { "type": "string" },
+        "temContabilidadeAtiva": { "type": "string" },
+        "temBensGarantia": { "type": "string" },
+        "urgenciaResolucao": { "type": "string" },
+        "afiliadoRef": { "type": "string" },
+        "parceiroRef": { "type": "string" },
+        "utms": { "type": "object" },
+        "score": { "type": "number" },
+        "limiteEstimado": { "type": "number" },
+        "tier": { "type": "string" },
+        "dataCadastro": { "type": "string", "format": "date-time" },
+        "statusInterno": { "type": "string" }
+      },
+      "required": ["nomeEmpresa", "cnpj", "nomeAdministrador", "email"]
     }
   },
   "firestore": {
+    "/leads_credito/{leadId}": {
+      "schema": "LeadCredito",
+      "description": "Coleção de leads de crédito premium."
+    },
     "/usuarios/{userId}": {
       "schema": "User",
       "description": "Coleção de usuários."

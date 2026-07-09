@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
        } else if (!targetUid) {
          // Criação de perfil inicial para novo usuário
          const searchParams = new URLSearchParams(location.search);
-         const refId = searchParams.get('ref');
+         const refId = searchParams.get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref');
          
          let role: UserRole = 'CLIENTE';
          let status = 'PENDENTE';

@@ -182,6 +182,19 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    match /leads_credito/{leadId} {
+      allow read: if isMaster() || isAnalista() || (isAuthenticated() && (
+        resource.data.get('afiliadoRef', null) == request.auth.uid ||
+        resource.data.get('parceiroRef', null) == request.auth.uid
+      ));
+      allow create: if true; // Public lead capture via simulator
+      allow update: if isMaster() || (isAuthenticated() && (
+        resource.data.get('afiliadoRef', null) == request.auth.uid ||
+        resource.data.get('parceiroRef', null) == request.auth.uid
+      ));
+      allow delete: if isMaster();
+    }
+
     // 5. CLIENTES
     match /clientes/{clientId} {
       allow read: if isMaster() || (isAuthenticated() && resource != null && isTenantTeam(resource.data.get('tenantId', null)));

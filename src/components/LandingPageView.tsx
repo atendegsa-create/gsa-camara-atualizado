@@ -43,7 +43,7 @@ export function LandingPageView() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref') || params.get('parceiro');
+    const ref = params.get('ref') || params.get('parceiro') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref');
     if (ref) {
       setPartnerRef(ref);
       const fetchAfiliado = async () => {

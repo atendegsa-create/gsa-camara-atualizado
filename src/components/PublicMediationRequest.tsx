@@ -19,7 +19,7 @@ interface RequestForm {
 export default function PublicMediationRequest() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [searchParams] = useSearchParams();
-  const refConsultorId = searchParams.get('ref');
+  const refConsultorId = searchParams.get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref') || '';
   const { register, handleSubmit } = useForm<RequestForm>();
   const [step, setStep] = useState(0); // Começa no Passo 0 (Aviso)
   const [isSubmitting, setIsSubmitting] = useState(false);
