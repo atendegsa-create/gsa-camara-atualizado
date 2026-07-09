@@ -815,40 +815,89 @@ function Dashboard() {
                   </header>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <Link to="processos" className="group bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition-transform">
-                        <FileText size={28} />
+                    {/* 1. PROCESSO RÁPIDO */}
+                    <Link to="processo-rapido" className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4 group-hover:scale-110 transition-transform">
+                        <Zap size={24} />
                       </div>
-                      <h3 className="font-bold text-xl text-gray-900 mb-2">Processos</h3>
-                      <p className="text-gray-500 text-sm leading-relaxed mb-6">Visualize e acompanhe o status de todos os protocolos ativos.</p>
-                      <span className="text-blue-600 font-bold text-sm inline-flex items-center gap-2 group-hover:gap-3 transition-all">
-                        Gerenciar <Activity size={16} />
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Processo Rápido</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Inicie resoluções rápidas e simplificadas.</p>
+                      <span className="text-amber-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Acessar <Activity size={14} />
                       </span>
                     </Link>
 
-                    <Link to="processos/novo" className="group bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
-                        <Plus size={28} />
+                    {/* 2. VITRINE DE SOLUÇÕES */}
+                    <Link to="/solucoes" target="_blank" className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 group-hover:scale-110 transition-transform">
+                        <Store size={24} />
                       </div>
-                      <h3 className="font-bold text-xl text-gray-900 mb-2">Novo Ato</h3>
-                      <p className="text-gray-500 text-sm leading-relaxed mb-6">Inicie um novo protocolo de mediação ou auditoria pericial.</p>
-                      <span className="text-primary font-bold text-sm inline-flex items-center gap-2 group-hover:gap-3 transition-all">
-                        Criar Novo <Activity size={16} />
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Vitrine de Soluções</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Acesse o catálogo público de soluções.</p>
+                      <span className="text-pink-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Visualizar <ArrowRight size={14} />
                       </span>
                     </Link>
 
-                    <RoleProtectedRoute allowedRoles={['MASTER', 'ADMIN', 'DIRETOR', 'UNIDADE']}>
-                      <Link to="leads-online" className="group bg-indigo-900 p-8 rounded-3xl shadow-lg border border-indigo-800 hover:bg-indigo-950 transition-all transform hover:-translate-y-1 border-b-4 border-b-indigo-700 active:border-b-0 active:translate-y-0.5">
-                        <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-indigo-300 mb-6 group-hover:scale-110 transition-transform">
-                          <BrainCircuit size={28} />
-                        </div>
-                        <h3 className="font-bold text-xl text-white mb-2">Captação Inteligente</h3>
-                        <p className="text-indigo-200/70 text-sm leading-relaxed mb-6">Acesse leads e simulações processadas via IA em tempo real.</p>
-                        <span className="text-white font-bold text-sm inline-flex items-center gap-2 group-hover:gap-3 transition-all">
-                          Acessar Monitor <ArrowRight size={16} />
-                        </span>
-                      </Link>
-                    </RoleProtectedRoute>
+                    {/* 3. CAPTAÇÃO DE CRÉDITO */}
+                    <Link to="credito-inteligente" className="group bg-indigo-900 p-6 rounded-3xl shadow-lg border border-indigo-800 hover:bg-indigo-950 transition-all transform hover:-translate-y-1 border-b-4 border-b-indigo-700 active:border-b-0 active:translate-y-0.5">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-indigo-300 mb-4 group-hover:scale-110 transition-transform">
+                        <BrainCircuit size={24} />
+                      </div>
+                      <h3 className="font-bold text-lg text-white mb-2">Captação de Crédito</h3>
+                      <p className="text-indigo-200/70 text-xs leading-relaxed mb-4">Inteligência em crédito e limites estruturados.</p>
+                      <span className="text-white font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Acessar Painel <ArrowRight size={14} />
+                      </span>
+                    </Link>
+
+                    {/* 4. PROCESSO ADMINISTRATIVO */}
+                    <Link to="processos/novo" className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-transform">
+                        <Plus size={24} />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Processo Administrativo</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Inicie um novo protocolo de mediação ou auditoria pericial.</p>
+                      <span className="text-emerald-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Criar Novo <Activity size={14} />
+                      </span>
+                    </Link>
+
+                    {/* 5. SITES (ADM SITES) */}
+                    <Link to={(profile?.tipo_usuario === 'UNIDADE' || profile?.tipo_usuario === 'DIRETOR' || profile?.tipo_usuario === 'GestorUnidade') ? "adm-sites" : "admin-sites"} className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
+                        <LayoutTemplate size={24} />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Sites (Adm Sites)</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Gerencie as páginas comerciais e funis.</p>
+                      <span className="text-purple-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Gerenciar <Activity size={14} />
+                      </span>
+                    </Link>
+
+                    {/* 6. GESTÃO GSA RECOVERY */}
+                    <Link to="recovery-admin" className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:scale-110 transition-transform">
+                        <ShieldAlert size={24} />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Gestão GSA Recovery</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Administração de cobranças e reabilitação de crédito.</p>
+                      <span className="text-red-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Administrar <Activity size={14} />
+                      </span>
+                    </Link>
+
+                    {/* 7. GESTÃO DE PROCESSOS */}
+                    <Link to="processos" className="group bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all transform hover:-translate-y-1">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
+                        <FileText size={24} />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Gestão de Processos</h3>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-4">Visualize e acompanhe o status de todos os protocolos ativos.</p>
+                      <span className="text-blue-600 font-bold text-xs inline-flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Gerenciar <Activity size={14} />
+                      </span>
+                    </Link>
                   </div>
 
                   <ResumoProcessosEnviados />
