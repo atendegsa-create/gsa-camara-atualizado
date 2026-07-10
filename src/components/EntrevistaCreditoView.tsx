@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { X, CheckCircle, FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface EntrevistaCreditoViewProps {
   leadIdProp?: string;
@@ -14,7 +16,13 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
   const [isShareMode, setIsShareMode] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
-  const leadId = leadIdProp || params.get('leadId') || '';
+  const initialLeadId = leadIdProp || params.get('leadId') || '';
+
+  const [currentLeadId, setCurrentLeadId] = useState(initialLeadId);
+  const [cnpjSearch, setCnpjSearch] = useState('');
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjError, setCnpjError] = useState('');
+  const [cnpjSuccess, setCnpjSuccess] = useState('');
 
   // Estado estruturado idêntico à sua Ficha de Entrevista Oficial
   const [ficha, setFicha] = useState({
@@ -57,14 +65,14 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
     declaracaoCpf: ''
   });
 
-  // Carregar dados existentes do lead do Firestore se houver leadId na URL
+  // Carregar dados existentes do lead do Firestore se houver currentLeadId na URL
   useEffect(() => {
-    if (!leadId) return;
+    if (!currentLeadId) return;
     setIsShareMode(true);
 
     const carregarDadosLead = async () => {
       try {
-        const docRef = doc(db, 'leads_credito', leadId);
+        const docRef = doc(db, 'leads_credito', currentLeadId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -94,7 +102,158 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
       }
     };
     carregarDadosLead();
-  }, [leadId]);
+  }, [currentLeadId]);
+
+  const handleCnpjValidation = async (cnpjToValidate: string) => {
+    setCnpjError('');
+    setCnpjSuccess('');
+    
+    if (!cnpjToValidate || !cnpjToValidate.trim()) {
+      return;
+    }
+
+    setCnpjLoading(true);
+    try {
+      const { query, where, getDocs } = await import('firebase/firestore');
+      const cleanCnpj = cnpjToValidate.replace(/\D/g, '');
+      const q = query(collection(db, 'leads_credito'), where('cnpj', '==', cnpjToValidate.trim()));
+      const querySnapshot = await getDocs(q);
+
+      const processLead = (leadDoc: any) => {
+        const leadData = leadDoc.data();
+        setCurrentLeadId(leadDoc.id);
+        setCnpjSuccess(`Empresa localizada: ${leadData.nomeEmpresa || leadData.empresa || 'Sem nome'}. Os dados foram vinculados.`);
+        
+        // Atualiza a ficha com os dados existentes
+        setFicha(prev => ({
+          ...prev,
+          razaoSocial: leadData.nomeEmpresa || prev.razaoSocial,
+          nomeFantasia: leadData.nomeEmpresa || prev.nomeFantasia,
+          contatoResponsavel: leadData.nomeAdministrador || prev.contatoResponsavel,
+          telefoneCelular: leadData.whatsapp || prev.telefoneCelular,
+          emailEmpresa: leadData.email || prev.emailEmpresa,
+          declaracaoNome: leadData.nomeAdministrador || prev.declaracaoNome,
+          // mantém o resto intocado se não existir no lead
+        }));
+      };
+
+      if (!querySnapshot.empty) {
+        processLead(querySnapshot.docs[0]);
+      } else {
+        const q2 = query(collection(db, 'leads_credito'), where('cnpj', '==', cleanCnpj));
+        const querySnapshot2 = await getDocs(q2);
+        if (!querySnapshot2.empty) {
+          processLead(querySnapshot2.docs[0]);
+        } else {
+          setCurrentLeadId(''); // reseta caso seja novo
+          setCnpjSuccess('Novo CNPJ detectado. Um novo registro será criado ao salvar a ficha.');
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao buscar CNPJ:", err);
+      setCnpjError('Ocorreu um erro ao validar o CNPJ no banco de dados.');
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
+  const handleExportarPDF = () => {
+    const doc = new jsPDF();
+    const titulo = "Dossiê Cadastral - GSA Câmara";
+    const dataHora = new Date().toLocaleString('pt-BR');
+    
+    doc.setFontSize(16);
+    doc.text(titulo, 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Data de Emissão: ${dataHora}`, 14, 28);
+    doc.text(`Empresa: ${ficha.razaoSocial || ficha.nomeFantasia || 'N/A'}`, 14, 34);
+    doc.text(`CNPJ: ${ficha.cnpj || 'N/A'}`, 14, 40);
+
+    const formatData = (data: Record<string, string>) => {
+      return Object.entries(data).map(([key, value]) => [key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()), value || 'N/A']);
+    };
+
+    const section1 = formatData({
+      RazãoSocial: ficha.razaoSocial,
+      NomeFantasia: ficha.nomeFantasia,
+      CNPJ: ficha.cnpj,
+      DataDeFundação: ficha.dataFundacao,
+      AtividadePrincipal: ficha.atividadePrincipal,
+      TelefoneFixo: ficha.telefoneFixo,
+      TelefoneCelular: ficha.telefoneCelular,
+      Email: ficha.emailEmpresa
+    });
+
+    const section2 = formatData({
+      NomeSócio1: ficha.socio1.nome,
+      CPFSócio1: ficha.socio1.cpf,
+      Participação1: ficha.socio1.participacao,
+      NomeSócio2: ficha.socio2.nome,
+      CPFSócio2: ficha.socio2.cpf,
+      Participação2: ficha.socio2.participacao
+    });
+
+    const section3 = formatData({
+      CondiçãoSede: ficha.condicaoSede,
+      ValorAluguel: ficha.valorAluguel,
+      ÉFranquia: ficha.eFranquia,
+      Franqueador: ficha.franqueador,
+      QuantidadeFuncionários: ficha.qtdFuncionarios,
+      DespesasPessoal: ficha.despesasPessoal,
+      FaturamentoMensal: ficha.faturamentoMedioMensal
+    });
+    
+    const section4 = formatData({
+      PossuiGarantia: ficha.possuiGarantia,
+      DescriçãoGarantia: ficha.descricaoGarantia
+    });
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['1. Dados da Empresa', '']],
+      body: section1,
+      theme: 'grid',
+      styles: { fontSize: 9 }
+    });
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['2. Estrutura Societária', '']],
+      body: section2,
+      theme: 'grid',
+      styles: { fontSize: 9 }
+    });
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['3. Informações Operacionais e Financeiras', '']],
+      body: section3,
+      theme: 'grid',
+      styles: { fontSize: 9 }
+    });
+    
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['4. Garantias e Observações', '']],
+      body: [...section4, ['Observações', ficha.observacoes || 'Nenhuma']],
+      theme: 'grid',
+      styles: { fontSize: 9 }
+    });
+    
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['Declaração', '']],
+      body: [
+        ['Nome do Declarante', ficha.declaracaoNome],
+        ['CPF do Declarante', ficha.declaracaoCpf]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(`Dossie_${ficha.cnpj || 'empresa'}.pdf`);
+  };
 
   const handleSalvarFicha = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,9 +277,9 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
         statusFicha: 'Aguardando Auditoria GSA'
       };
 
-      if (leadId) {
+      if (currentLeadId) {
         // Modo Edição/Associação: Salva direto no lead correspondente do Firestore
-        const docRef = doc(db, 'leads_credito', leadId);
+        const docRef = doc(db, 'leads_credito', currentLeadId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -141,7 +300,7 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
           // Sincroniza localmente
           const localLeads = JSON.parse(localStorage.getItem('gsa_credito_leads') || '[]');
           const updatedLocalLeads = localLeads.map((l: any) => {
-            if (l.id === leadId) {
+            if (l.id === currentLeadId) {
               return {
                 ...l,
                 status: checagem.statusGeral === 'Pronto para Análise de Liberação' ? 'Análise Técnica' : 'Documentação Pendente'
@@ -152,8 +311,33 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
           localStorage.setItem('gsa_credito_leads', JSON.stringify(updatedLocalLeads));
         }
       } else {
-        // Salva uma nova ficha isolada se não houver ID associado
-        await addDoc(collection(db, 'fichas_entrevista_credito'), payload);
+        // Salva um novo lead se não houver ID associado
+        const { checarStatusGeralLead } = await import('../App');
+        
+        const newLeadPayload = {
+          empresa: ficha.razaoSocial || ficha.nomeFantasia || 'Empresa Sem Nome',
+          cnpj: ficha.cnpj,
+          adminNome: ficha.contatoResponsavel || ficha.declaracaoNome,
+          generoAdmin: 'Homem', // Padrão
+          faturamentoAnual: 0, // Padrão
+          solicitacaoCredito: 0, // Padrão
+          tipoGarantia: 'Nenhuma',
+          valorGarantia: 0,
+          regimeTributario: 'Simples', // Padrão
+          email: ficha.emailEmpresa,
+          whatsapp: ficha.telefoneCelular,
+          afiliadoRef: refId,
+          parceiroRef: parceiroId,
+          utms,
+          dataRegistro: new Date().toISOString(),
+          dadosFicha: payload,
+          statusInterno: 'Documentação Pendente'
+        };
+
+        const checagem = checarStatusGeralLead(newLeadPayload as any);
+        newLeadPayload.statusInterno = checagem.statusGeral;
+
+        await addDoc(collection(db, 'leads_credito'), newLeadPayload);
       }
 
       setSucesso(true);
@@ -239,6 +423,22 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
 
           {/* BLOCK 1: DADOS DA EMPRESA */}
           <section className="space-y-4">
+            {cnpjSuccess && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-800 text-xs leading-relaxed font-normal shadow-sm mb-4">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong>{cnpjSuccess}</strong>
+                </div>
+              </div>
+            )}
+            {cnpjError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800 text-xs leading-relaxed font-normal shadow-sm mb-4">
+                <div>
+                  <strong>{cnpjError}</strong>
+                </div>
+              </div>
+            )}
+            
             <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg inline-block">1️⃣ Dados da Empresa</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
@@ -249,9 +449,17 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
                 <label className="text-xs font-semibold text-slate-600 block mb-1">Nome Fantasia</label>
                 <input type="text" value={ficha.nomeFantasia} onChange={e => setFicha({...ficha, nomeFantasia: e.target.value})} placeholder="Ex: Grupo Soluções" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none transition-all" />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1">CNPJ</label>
-                <input required type="text" value={ficha.cnpj} onChange={e => setFicha({...ficha, cnpj: e.target.value})} placeholder="00.000.000/0001-00" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none font-mono transition-all" />
+              <div className="relative">
+                <label className="text-xs font-semibold text-slate-600 block mb-1">CNPJ {cnpjLoading && <span className="text-blue-500 ml-2 animate-pulse text-[10px]">Validando...</span>}</label>
+                <input 
+                  required 
+                  type="text" 
+                  value={ficha.cnpj} 
+                  onChange={e => setFicha({...ficha, cnpj: e.target.value})} 
+                  onBlur={() => handleCnpjValidation(ficha.cnpj)}
+                  placeholder="00.000.000/0001-00" 
+                  className={`w-full bg-slate-50 border rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none font-mono transition-all ${cnpjError ? 'border-red-400' : 'border-slate-200'}`} 
+                />
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1">Data de Fundação</label>
@@ -479,13 +687,23 @@ export default function EntrevistaCreditoView({ leadIdProp, onClose }: Entrevist
             </div>
           </section>
 
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs sm:text-sm py-4 rounded-xl transition-all shadow-md uppercase tracking-wider cursor-pointer"
-          >
-            {loading ? 'Transmitindo Registro...' : '✓ Salvar e Chancelar Ficha Cadastral'}
-          </button>
+          <div className="flex gap-3">
+            <button 
+              type="button" 
+              onClick={handleExportarPDF}
+              className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm py-4 rounded-xl transition-all shadow-md uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
+            >
+              <FileText className="w-4 h-4" /> Exportar Dossiê
+            </button>
+
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs sm:text-sm py-4 rounded-xl transition-all shadow-md uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? 'Transmitindo...' : '✓ Salvar Ficha Cadastral'}
+            </button>
+          </div>
 
         </form>
       </div>

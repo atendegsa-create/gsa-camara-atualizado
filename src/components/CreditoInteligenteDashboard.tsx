@@ -139,8 +139,6 @@ export default function CreditoInteligenteDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [currentLeadId, setCurrentLeadId] = useState<string>('');
-  const [cnpjLookup, setCnpjLookup] = useState('');
-  const [lookupLoading, setLookupLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
   
   // Estado do Funil GSA Recovery
@@ -664,31 +662,6 @@ export default function CreditoInteligenteDashboard() {
     setTimeout(() => setCopiadoId(null), 2000);
   };
 
-  // Motor de Busca Rápida por CNPJ na Entrada do Módulo
-  const verificarCadastroPorCNPJ = async () => {
-    if (!cnpjLookup.trim()) {
-      alert("Por favor, digite um CNPJ.");
-      return;
-    }
-    setLookupLoading(true);
-    try {
-      const q = query(collection(db, 'leads_credito'), where('cnpj', '==', cnpjLookup.trim()));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        const docEncontrado = querySnapshot.docs[0];
-        setCurrentLeadId(docEncontrado.id);
-        alert(`✓ Cadastro localizado! Carregando dados de ${docEncontrado.data().nomeEmpresa || docEncontrado.data().empresa}.`);
-      } else {
-        alert("ℹ️ CNPJ não encontrado. O link gerado criará um novo registro do zero.");
-      }
-    } catch (err) {
-      console.error("Erro ao buscar CNPJ:", err);
-    } finally {
-      setLookupLoading(false);
-    }
-  };
-
   // Gerador Inteligente de Links de Prospecção / Resolução
   const copiarLinkCompartilhamento = (destino: 'ficha' | 'checklist' | 'simulador') => {
     const baseUrl = window.location.origin;
@@ -737,28 +710,6 @@ export default function CreditoInteligenteDashboard() {
             <p className="text-xs text-slate-500 max-w-xl font-medium">
               Sistema integrado de análise de limites, MLM, crédito estruturado privado e reabilitação fiscal/judicial.
             </p>
-          </div>
-
-          {/* INPUT DE VERIFICAÇÃO DE CNPJ DA EMPRESA */}
-          <div className="w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-2 items-center">
-            <div className="w-full sm:w-auto">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1 font-mono">Identificar Empresa</span>
-              <input 
-                type="text" 
-                value={cnpjLookup}
-                onChange={e => setCnpjLookup(e.target.value)}
-                placeholder="Digitar CNPJ para checar..." 
-                className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 w-full sm:w-48"
-              />
-            </div>
-            <button 
-              type="button"
-              disabled={lookupLoading}
-              onClick={verificarCadastroPorCNPJ}
-              className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors mt-auto self-end h-[34px] cursor-pointer"
-            >
-              {lookupLoading ? '...' : '🔍 Validar'}
-            </button>
           </div>
         </div>
 

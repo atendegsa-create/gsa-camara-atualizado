@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-export const useUTMTracking = () => {
+export function useUTMTracking() {
   let location: any = null;
   try {
     location = useLocation();
@@ -55,6 +55,27 @@ export const useUTMTracking = () => {
   };
 
   useEffect(() => {
+    // 1. Busca os parâmetros diretamente da barra de endereço bruta do navegador
+    const urlParams = new URLSearchParams(window.location.search);
+    let ref = urlParams.get('ref') || urlParams.get('parceiro');
+
+    // 2. Se não achou na rota atual, faz uma varredura na URL raiz histórica da sessão
+    if (!ref && document.referrer) {
+      try {
+        const referrerUrl = new URL(document.referrer);
+        ref = referrerUrl.searchParams.get('ref') || referrerUrl.searchParams.get('parceiro');
+      } catch (e) {
+        console.error("Erro ao ler referrer:", e);
+      }
+    }
+
+    // 3. Se localizou a tag (ex: UNIDA456), grava imediatamente no localStorage e sessionStorage
+    if (ref) {
+      localStorage.setItem('gsa_ref', ref);
+      sessionStorage.setItem('gsa_ref', ref);
+      console.log(`✓ Rastreamento persistido de forma robusta em produção: ${ref}`);
+    }
+
     captureTracking();
   }, [location?.search, location?.pathname]);
 

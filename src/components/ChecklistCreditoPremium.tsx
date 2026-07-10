@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { X, CheckCircle2, FileText, Send, Share2, ClipboardCheck, ArrowLeft, Info, HelpCircle } from 'lucide-react';
 
 interface DocumentoItem {
@@ -22,14 +22,20 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
   const [precisaGarantiaReal, setPrecisaGarantiaReal] = useState<'Sim' | 'Não'>('Não');
   const [isShareMode, setIsShareMode] = useState<boolean>(false);
   
+  const params = new URLSearchParams(window.location.search);
+  const initialLeadId = leadIdProp || params.get('leadId') || '';
+  
+  const [currentLeadId, setCurrentLeadId] = useState(initialLeadId);
+  const [cnpjSearch, setCnpjSearch] = useState('');
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjError, setCnpjError] = useState('');
+  const [cnpjSuccess, setCnpjSuccess] = useState('');
+  
   // Dados de Envio/Compartilhamento
   const [emailContador, setEmailContador] = useState('');
   const [whatsappContador, setWhatsappContador] = useState('');
   const [isCompartilhado, setIsCompartilhado] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const params = new URLSearchParams(window.location.search);
-  const leadId = leadIdProp || params.get('leadId') || '';
 
   // Efeito para carregar as configurações do checklist a partir dos parâmetros de compartilhamento na URL
   useEffect(() => {
@@ -38,7 +44,7 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
     const qGarantia = params.get('garantia');
     const qShare = params.get('share');
 
-    if (qShare === 'true' || qRegime || qConta || qGarantia || leadId) {
+    if (qShare === 'true' || qRegime || qConta || qGarantia || currentLeadId) {
       setIsShareMode(true);
     }
 
@@ -95,13 +101,13 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
     { id: 'gr3', nome: 'Documentação Completa do Garantidor (RG, CNH, Renda, Estado Civil)', categoria: 'garantia_real', status: 'Pendente' },
   ]);
 
-  // Carrega do Firestore as informações e documentos do lead se houver leadId
+  // Carrega do Firestore as informações e documentos do lead se houver currentLeadId
   useEffect(() => {
-    if (!leadId) return;
+    if (!currentLeadId) return;
 
     const carregarLeadNoChecklist = async () => {
       try {
-        const docRef = doc(db, 'leads_credito', leadId);
+        const docRef = doc(db, 'leads_credito', currentLeadId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -126,7 +132,7 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
       }
     };
     carregarLeadNoChecklist();
-  }, [leadId]);
+  }, [currentLeadId]);
 
   // Filtra dinamicamente o que deve aparecer na tela com base nas escolhas estratégicas
   const documentosFiltrados = documentos.filter(doc => {
@@ -148,9 +154,9 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
     const novosDocs = documentos.map(d => d.id === id ? { ...d, status: novoStatus } : d);
     setDocumentos(novosDocs);
 
-    if (leadId) {
+    if (currentLeadId) {
       try {
-        const docRef = doc(db, 'leads_credito', leadId);
+        const docRef = doc(db, 'leads_credito', currentLeadId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -177,7 +183,7 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
           // Atualizar local
           const localLeads = JSON.parse(localStorage.getItem('gsa_credito_leads') || '[]');
           const updatedLocalLeads = localLeads.map((l: any) => {
-            if (l.id === leadId) {
+            if (l.id === currentLeadId) {
               return {
                 ...l,
                 status: checagem.statusGeral === 'Pronto para Análise de Liberação' ? 'Análise Técnica' : 'Documentação Pendente'
@@ -195,11 +201,11 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
 
   // Sincronizar filtros reativos no Firestore quando mudam
   useEffect(() => {
-    if (!leadId) return;
+    if (!currentLeadId) return;
 
     const syncFiltrosChecklist = async () => {
       try {
-        const docRef = doc(db, 'leads_credito', leadId);
+        const docRef = doc(db, 'leads_credito', currentLeadId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const currentLeadData = docSnap.data();
@@ -226,7 +232,49 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
       }
     };
     syncFiltrosChecklist();
-  }, [regime, precisaAberturaConta, precisaGarantiaReal, leadId]);
+  }, [regime, precisaAberturaConta, precisaGarantiaReal, currentLeadId]);
+
+  // Função para validar CNPJ e vincular a um Lead
+  const handleCnpjSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCnpjError('');
+    setCnpjSuccess('');
+    if (!cnpjSearch.trim()) {
+      setCnpjError('Digite um CNPJ válido.');
+      return;
+    }
+
+    setCnpjLoading(true);
+    try {
+      const cleanCnpj = cnpjSearch.replace(/\\D/g, '');
+      const q = query(collection(db, 'leads_credito'), where('cnpj', '==', cnpjSearch.trim()));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const leadDoc = querySnapshot.docs[0];
+        const leadData = leadDoc.data();
+        setCurrentLeadId(leadDoc.id);
+        setCnpjSuccess(`Empresa encontrada: ${leadData.nomeEmpresa || leadData.empresa || 'Empresa sem nome'}. A documentação foi vinculada.`);
+      } else {
+        // Tenta buscar com formatação diferente caso tenha salvo sem pontuação
+        const q2 = query(collection(db, 'leads_credito'), where('cnpj', '==', cleanCnpj));
+        const querySnapshot2 = await getDocs(q2);
+        if (!querySnapshot2.empty) {
+          const leadDoc = querySnapshot2.docs[0];
+          const leadData = leadDoc.data();
+          setCurrentLeadId(leadDoc.id);
+          setCnpjSuccess(`Empresa encontrada: ${leadData.nomeEmpresa || leadData.empresa || 'Empresa sem nome'}. A documentação foi vinculada.`);
+        } else {
+          setCnpjError('Nenhum cadastro encontrado para este CNPJ. Certifique-se de que a empresa foi cadastrada no CRM.');
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao buscar CNPJ:", err);
+      setCnpjError('Ocorreu um erro ao buscar o CNPJ.');
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
 
   // Envio de Link Customizado para o Contador via WhatsApp
   const encaminharContadorZap = () => {
@@ -234,7 +282,7 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
     const refId = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('gsa_ref') || sessionStorage.getItem('gsa_ref') || '';
     const parceiroId = new URLSearchParams(window.location.search).get('parceiro') || localStorage.getItem('gsa_parceiro') || sessionStorage.getItem('gsa_parceiro') || '';
 
-    const linkCompartilhavel = `${window.location.origin}/checklist-compartilhado?regime=${regime}&conta=${precisaAberturaConta}&garantia=${precisaGarantiaReal}&ref=${refId}&parceiro=${parceiroId}${leadId ? `&leadId=${leadId}` : ''}`;
+    const linkCompartilhavel = `${window.location.origin}/checklist-compartilhado?regime=${regime}&conta=${precisaAberturaConta}&garantia=${precisaGarantiaReal}&ref=${refId}&parceiro=${parceiroId}${currentLeadId ? `&leadId=${currentLeadId}` : ''}`;
     const texto = `Olá, tudo bem? Estamos estruturando a captação de crédito da nossa empresa junto à Câmara GSA. Preciso que você anexe ou valide a lista de documentos contábeis diretamente por este link seguro: ${linkCompartilhavel}`;
     window.open(`https://api.whatsapp.com/send?phone=55${whatsappContador.replace(/\D/g, '')}&text=${encodeURIComponent(texto)}`, '_blank');
   };
@@ -304,6 +352,48 @@ export default function ChecklistCreditoPremium({ leadIdProp, onClose }: Checkli
               <span className="text-[10px] text-slate-500 font-light mt-1.5">{totalAnexados} de {totalExigidos} arquivos</span>
             </div>
           </div>
+
+          {/* BUSCA POR CNPJ SE NÃO HOUVER LEAD ATIVO */}
+          {!currentLeadId && (
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-800">Vincular Documentação a uma Empresa Cadastrada</h3>
+              <p className="text-xs text-slate-500">Informe o CNPJ da empresa para buscar o cadastro no CRM e vincular os documentos (os que já foram enviados serão exibidos automaticamente).</p>
+              
+              <form onSubmit={handleCnpjSearch} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="00.000.000/0001-00"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                  value={cnpjSearch}
+                  onChange={(e) => setCnpjSearch(e.target.value)}
+                  disabled={cnpjLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={cnpjLoading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl transition-all disabled:opacity-50 text-sm whitespace-nowrap"
+                >
+                  {cnpjLoading ? 'Buscando...' : 'Validar CNPJ'}
+                </button>
+              </form>
+              
+              {cnpjError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs mt-2">
+                  {cnpjError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUCESSO AO VINCULAR */}
+          {cnpjSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-800 text-xs leading-relaxed font-normal shadow-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>{cnpjSuccess}</strong> O checklist abaixo foi atualizado com as pendências reais desta empresa.
+              </div>
+            </div>
+          )}
 
           {/* ALERTA DE COMPARTILHAMENTO ATIVO */}
           {isShareMode && (

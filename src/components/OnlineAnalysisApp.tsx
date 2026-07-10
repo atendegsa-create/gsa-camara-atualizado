@@ -623,26 +623,66 @@ export default function OnlineAnalysisApp() {
 
       async function sendLead(user: any) {
         const token = await user.getIdToken();
-        fetch('/api/leads/capturar', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: formData.nome,
-            email: formData.email,
-            whatsapp: formData.whatsapp,
-            cpf: formData.cpf,
-            origin: "App Online Quiz",
-            tenantSlug: tenantSlug || 'gsa-master'
-          })
-        }).then(res => res.ok ? res.json().catch(() => ({})) : {}).then((data: any) => {
-          if (data.leadId) {
-            setLeadId(data.leadId);
-            localStorage.setItem('current_lead_id', data.leadId);
+        const { query, where, getDocs, collection, doc, updateDoc } = await import('firebase/firestore');
+        
+        let existingLeadId = null;
+        if (formData.cpf && formData.cpf.trim()) {
+          const q = query(collection(db, 'leads'), where('cpf', '==', formData.cpf.trim()));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            existingLeadId = querySnapshot.docs[0].id;
+          } else {
+            // Also check clean CPF/CNPJ just in case
+            const cleanCpf = formData.cpf.replace(/\D/g, '');
+            const q2 = query(collection(db, 'leads'), where('cpf', '==', cleanCpf));
+            const querySnapshot2 = await getDocs(q2);
+            if (!querySnapshot2.empty) {
+              existingLeadId = querySnapshot2.docs[0].id;
+            }
           }
-        });
+        }
+
+        if (existingLeadId) {
+          console.log("Lead existente encontrado:", existingLeadId);
+          setLeadId(existingLeadId);
+          localStorage.setItem('current_lead_id', existingLeadId);
+          
+          try {
+            const leadRef = doc(db, 'leads', existingLeadId);
+            await updateDoc(leadRef, {
+              name: formData.nome,
+              email: formData.email,
+              whatsapp: formData.whatsapp,
+              cpf: formData.cpf,
+              origin: "App Online Quiz",
+              tenantSlug: tenantSlug || 'gsa-master',
+              updatedAt: serverTimestamp()
+            });
+          } catch(e) {
+             console.error("Erro ao atualizar lead existente:", e);
+          }
+        } else {
+          fetch('/api/leads/capturar', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              name: formData.nome,
+              email: formData.email,
+              whatsapp: formData.whatsapp,
+              cpf: formData.cpf,
+              origin: "App Online Quiz",
+              tenantSlug: tenantSlug || 'gsa-master'
+            })
+          }).then(res => res.ok ? res.json().catch(() => ({})) : {}).then((data: any) => {
+            if (data.leadId) {
+              setLeadId(data.leadId);
+              localStorage.setItem('current_lead_id', data.leadId);
+            }
+          });
+        }
       }
     } catch (e) {
       console.error("Error capturing lead:", e);
@@ -677,13 +717,13 @@ export default function OnlineAnalysisApp() {
           />
         </div>
         <div>
-          <label className="text-xs font-bold text-gray-400 uppercase ml-2">CPF</label>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-2">CPF / CNPJ</label>
           <input 
             type="text" 
             value={formData.cpf}
             onChange={e => setFormData({...formData, cpf: e.target.value})}
             className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-none transition-all"
-            placeholder="000.000.000-00"
+            placeholder="000.000.000-00 ou 00.000.000/0001-00"
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
